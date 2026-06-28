@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { BASE, COLORS, getDifficultyForDay } from '../config.js';
 import { ClientManager } from '../managers/ClientManager.js';
 import { WarehouseManager } from '../managers/WarehouseManager.js';
+import { showFloatingText } from '../ui/FloatingText.js';
 
 const EXTRA_ROWS = ['D', 'E', 'F'];
 
@@ -29,17 +30,14 @@ export class GameScene extends Phaser.Scene {
     this.viewMode = 'counter';
     this.shiftPaused = false;
 
-    // Shift tracking
     this.shiftTimeLeft = BASE.SHIFT_DURATION_SEC;
     this.shiftDelivered = 0;
     this.shiftCoinsEarned = 0;
     this.shiftRatingChange = 0;
     this.coinsAtStart = this.coins;
 
-    // Difficulty
     this.difficulty = getDifficultyForDay(this.day);
 
-    // Shelf configuration (base + expansion)
     this.shelfRows = [...BASE.SHELF_ROWS];
     const expansionLevel = this.upgrades.warehouseExpansion || 0;
     for (let i = 0; i < expansionLevel; i++) {
@@ -48,7 +46,6 @@ export class GameScene extends Phaser.Scene {
     this.shelfCols = [...BASE.SHELF_COLS];
     this.existingIdChance = BASE.EXISTING_ID_CHANCE;
 
-    // Managers
     this.clients = new ClientManager(this);
     this.warehouse = new WarehouseManager(this);
 
@@ -70,10 +67,8 @@ export class GameScene extends Phaser.Scene {
       this.difficulty.extraDecoyPackages,
     );
 
-    // Start spawning
     this.clients.scheduleNextSpawn();
 
-    // Shift timer
     this.shiftTimerEvent = this.time.addEvent({
       delay: 1000,
       callback: this.tickShift,
@@ -93,43 +88,60 @@ export class GameScene extends Phaser.Scene {
   createUI() {
     this.add.rectangle(450, 0, 900, 50, COLORS.TOP_BAR).setOrigin(0.5, 0);
 
-    this.coinsText = this.add.text(15, 12, 'Монеты: 0', {
-      fontSize: '16px', fontFamily: 'Arial', color: '#ffd700', fontStyle: 'bold',
+    const topY = 14;
+    const fontSize = '14px';
+
+    this.coinsText = this.add.text(10, topY, 'Монеты: 0', {
+      fontSize, fontFamily: 'Arial', color: '#ffd700', fontStyle: 'bold',
     });
 
-    this.ratingText = this.add.text(170, 12, 'Рейтинг: 0', {
-      fontSize: '16px', fontFamily: 'Arial', color: '#00ff88', fontStyle: 'bold',
+    this.ratingText = this.add.text(140, topY, 'Рейтинг: 0', {
+      fontSize, fontFamily: 'Arial', color: '#00ff88', fontStyle: 'bold',
     });
 
-    this.timerText = this.add.text(350, 12, 'Таймер: --', {
-      fontSize: '16px', fontFamily: 'Arial', color: '#ff6b6b', fontStyle: 'bold',
+    this.timerText = this.add.text(290, topY, 'Таймер: --', {
+      fontSize, fontFamily: 'Arial', color: '#ff6b6b', fontStyle: 'bold',
     });
 
-    this.dayText = this.add.text(520, 12, `День: ${this.day}`, {
-      fontSize: '16px', fontFamily: 'Arial', color: '#88ccff', fontStyle: 'bold',
+    this.dayText = this.add.text(440, topY, `День: ${this.day}`, {
+      fontSize, fontFamily: 'Arial', color: '#88ccff', fontStyle: 'bold',
     });
 
-    this.shiftTimerText = this.add.text(650, 12, `Смена: ${this.shiftTimeLeft}с`, {
-      fontSize: '16px', fontFamily: 'Arial', color: '#ffaa44', fontStyle: 'bold',
-    });
+    // Shift timer bar in the top bar
+    this.shiftBarBg = this.add.rectangle(700, topY + 8, 160, 14, 0x333333, 0.8)
+      .setOrigin(0.5);
+    this.shiftBarFill = this.add.rectangle(700, topY + 8, 158, 12, 0xffaa44)
+      .setOrigin(0.5);
+    this.shiftTimerText = this.add.text(700, topY + 8, `${this.shiftTimeLeft}с`, {
+      fontSize: '11px', fontFamily: 'Arial', color: '#ffffff', fontStyle: 'bold',
+    }).setOrigin(0.5);
 
-    this.statusText = this.add.text(800, 12, '', {
-      fontSize: '14px', fontFamily: 'Arial', color: '#ffffff',
-    });
+    this.statusText = this.add.text(850, topY, '', {
+      fontSize: '12px', fontFamily: 'Arial', color: '#ffffff',
+    }).setOrigin(0.5, 0);
 
-    this.counterBtn = this.createButton(750, 575, 'Стойка', () => this.showView('counter'));
-    this.warehouseBtn = this.createButton(850, 575, 'Склад', () => this.showView('warehouse'));
+    this.counterBtn = this.createButton(730, 575, 'Стойка', () => this.showView('counter'));
+    this.warehouseBtn = this.createButton(840, 575, 'Склад', () => this.showView('warehouse'));
   }
 
   createButton(x, y, label, callback) {
-    const bg = this.add.rectangle(x, y, 90, 30, COLORS.BTN)
+    const bg = this.add.image(x, y, 'btn_normal')
       .setInteractive({ useHandCursor: true });
     const txt = this.add.text(x, y, label, {
       fontSize: '14px', fontFamily: 'Arial', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5);
-    bg.on('pointerover', () => bg.setFillStyle(COLORS.BTN_ACTIVE));
-    bg.on('pointerout', () => bg.setFillStyle(COLORS.BTN));
-    bg.on('pointerdown', callback);
+
+    bg.on('pointerover', () => bg.setTexture('btn_hover'));
+    bg.on('pointerout', () => {
+      const isActive =
+        (label === 'Стойка' && this.viewMode === 'counter') ||
+        (label === 'Склад' && this.viewMode === 'warehouse');
+      bg.setTexture(isActive ? 'btn_hover' : 'btn_normal');
+    });
+    bg.on('pointerdown', () => {
+      bg.setTexture('btn_active');
+      callback();
+    });
     return { bg, txt };
   }
 
@@ -137,7 +149,20 @@ export class GameScene extends Phaser.Scene {
     this.coinsText.setText(`Монеты: ${this.coins}`);
     this.ratingText.setText(`Рейтинг: ${this.rating}`);
     this.dayText.setText(`День: ${this.day}`);
+
+    // Update shift bar
+    const ratio = this.shiftTimeLeft / BASE.SHIFT_DURATION_SEC;
+    this.shiftBarFill.setScale(Math.max(0.01, ratio), 1);
     this.shiftTimerText.setText(`Смена: ${this.shiftTimeLeft}с`);
+
+    if (ratio > 0.3) {
+      this.shiftBarFill.setFillStyle(0xffaa44);
+    } else if (ratio > 0.1) {
+      this.shiftBarFill.setFillStyle(0xff6b44);
+    } else {
+      this.shiftBarFill.setFillStyle(0xff0000);
+    }
+
     if (this.clients.currentClient) {
       this.timerText.setText(`Таймер: ${this.clients.clientTimeLeft}с`);
     } else {
@@ -159,8 +184,8 @@ export class GameScene extends Phaser.Scene {
     this.counterGroup.setVisible(mode === 'counter');
     this.warehouseGroup.setVisible(mode === 'warehouse');
 
-    this.counterBtn.bg.setFillStyle(mode === 'counter' ? COLORS.BTN_ACTIVE : COLORS.BTN);
-    this.warehouseBtn.bg.setFillStyle(mode === 'warehouse' ? COLORS.BTN_ACTIVE : COLORS.BTN);
+    this.counterBtn.bg.setTexture(mode === 'counter' ? 'btn_hover' : 'btn_normal');
+    this.warehouseBtn.bg.setTexture(mode === 'warehouse' ? 'btn_hover' : 'btn_normal');
 
     if (mode === 'warehouse' && this.clients.currentClient) {
       this.warehouse.updateRequestText(this.clients.currentClient.requestedId);
@@ -171,10 +196,10 @@ export class GameScene extends Phaser.Scene {
 
   /* ---------- Package selection ---------- */
 
-  selectPackage(pkgId, rect) {
+  selectPackage(pkgId, img) {
     this.warehouse.resetHighlights();
     this.selectedPackageId = pkgId;
-    rect.setFillStyle(COLORS.PKG_SELECTED);
+    img.setTexture('pkg_selected');
     this.showStatus(`Выбрана: ${pkgId}`, '#2980b9');
     this.clients.updateDeliverButton();
   }
@@ -194,6 +219,7 @@ export class GameScene extends Phaser.Scene {
       this.shiftCoinsEarned += BASE.REWARD_COINS;
       this.shiftRatingChange++;
       this.showStatus(`+${BASE.REWARD_COINS} монет! +1 рейтинг`, '#2ecc71');
+      showFloatingText(this, 450, 350, `+${BASE.REWARD_COINS} монет`, '#2ecc71');
 
       this.warehouse.removePackage(this.selectedPackageId);
 
@@ -206,12 +232,12 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.coins = Math.max(0, this.coins - BASE.PENALTY_COINS);
       this.showStatus(`Неверная посылка! -${BASE.PENALTY_COINS} монет`, '#e74c3c');
+      showFloatingText(this, 450, 350, `-${BASE.PENALTY_COINS} монет`, '#e74c3c');
     }
 
     this.clients.removeClient();
     this.updateUI();
 
-    // Hire Assistant: auto-fulfill every 4th client
     this.clients.clientsServed++;
     if (!correct) {
       this.clients.scheduleNextSpawn();
@@ -235,7 +261,6 @@ export class GameScene extends Phaser.Scene {
   autoFulfillClient() {
     if (this.shiftPaused) return;
 
-    // Spawn a client and immediately fulfill them
     const pkgIds = Array.from(this.warehouse.packages.keys());
     if (pkgIds.length === 0) {
       this.clients.scheduleNextSpawn();
@@ -251,6 +276,7 @@ export class GameScene extends Phaser.Scene {
 
     this.warehouse.removePackage(autoId);
     this.showStatus(`Помощник выдал ${autoId}! +${BASE.REWARD_COINS}`, '#27ae60');
+    showFloatingText(this, 450, 300, `Помощник +${BASE.REWARD_COINS}`, '#27ae60');
     this.updateUI();
 
     if (this.warehouse.packages.size < 4) {
@@ -269,10 +295,6 @@ export class GameScene extends Phaser.Scene {
     this.shiftTimeLeft--;
     this.updateUI();
 
-    if (this.shiftTimeLeft <= 10) {
-      this.shiftTimerText.setColor('#ff0000');
-    }
-
     if (this.shiftTimeLeft <= 0) {
       this.endShift();
     }
@@ -281,14 +303,12 @@ export class GameScene extends Phaser.Scene {
   endShift() {
     this.shiftPaused = true;
 
-    // Stop all timers
     this.clients.stopAllTimers();
     if (this.shiftTimerEvent) {
       this.shiftTimerEvent.destroy();
       this.shiftTimerEvent = null;
     }
 
-    // Remove current client silently
     if (this.clients.currentClient) {
       this.clients.removeClient();
     }

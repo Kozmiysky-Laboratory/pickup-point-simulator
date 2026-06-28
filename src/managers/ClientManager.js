@@ -7,6 +7,7 @@ export class ClientManager {
     this.currentClient = null;
     this.clientTimerEvent = null;
     this.clientTimeLeft = 0;
+    this.clientTimeMax = 0;
     this.spawnTimerEvent = null;
     this.clientsServed = 0;
     this.assistantCounter = 0;
@@ -32,37 +33,56 @@ export class ClientManager {
     }).setOrigin(0.5);
     container.add(waitLabel);
 
-    this.clientRect = s.add.rectangle(450, 280, 80, 100, 0x999999).setVisible(false);
-    container.add(this.clientRect);
+    // Client sprite (using generated texture)
+    this.clientSprite = s.add.image(450, 280, 'client_0').setVisible(false);
+    container.add(this.clientSprite);
 
-    this.clientIdText = s.add.text(450, 230, '', {
+    this.clientIdText = s.add.text(450, 215, '', {
       fontSize: '16px', fontFamily: 'Arial', color: '#ffffff', fontStyle: 'bold',
       backgroundColor: '#333333', padding: { x: 6, y: 3 },
     }).setOrigin(0.5).setVisible(false);
     container.add(this.clientIdText);
 
-    this.clientLabel = s.add.text(450, 340, '', {
+    this.clientLabel = s.add.text(450, 345, '', {
       fontSize: '13px', fontFamily: 'Arial', color: '#333333',
     }).setOrigin(0.5).setVisible(false);
     container.add(this.clientLabel);
 
-    this.deliverZone = s.add.rectangle(450, 470, 200, 60, COLORS.SUCCESS, 0.6)
-      .setStrokeStyle(2, 0x27ae60)
+    // Timer bar
+    this.timerBarBg = s.add.image(450, 365, 'timer_bar_bg').setVisible(false);
+    container.add(this.timerBarBg);
+
+    this.timerBarFill = s.add.image(450, 365, 'timer_bar_fill')
+      .setVisible(false).setOrigin(0.5);
+    container.add(this.timerBarFill);
+
+    this.timerBarText = s.add.text(450, 365, '', {
+      fontSize: '10px', fontFamily: 'Arial', color: '#ffffff', fontStyle: 'bold',
+    }).setOrigin(0.5).setVisible(false).setDepth(10);
+    container.add(this.timerBarText);
+
+    // Deliver button (using generated texture)
+    this.deliverBtn = s.add.image(450, 470, 'deliver_normal')
       .setInteractive({ useHandCursor: true })
       .setVisible(false);
-    container.add(this.deliverZone);
+    container.add(this.deliverBtn);
 
     this.deliverText = s.add.text(450, 470, 'ВЫДАТЬ ПОСЫЛКУ', {
       fontSize: '14px', fontFamily: 'Arial', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5).setVisible(false);
     container.add(this.deliverText);
 
-    this.selectedLabel = s.add.text(450, 510, '', {
+    this.selectedLabel = s.add.text(450, 505, '', {
       fontSize: '12px', fontFamily: 'Arial', color: '#16213e',
     }).setOrigin(0.5).setVisible(false);
     container.add(this.selectedLabel);
 
-    this.deliverZone.on('pointerdown', () => this.scene.deliverPackage());
+    this.deliverBtn.on('pointerover', () => this.deliverBtn.setTexture('deliver_hover'));
+    this.deliverBtn.on('pointerout', () => this.deliverBtn.setTexture('deliver_normal'));
+    this.deliverBtn.on('pointerdown', () => {
+      this.deliverBtn.setTexture('deliver_active');
+      this.scene.deliverPackage();
+    });
 
     this.noClientText = s.add.text(450, 280, 'Ожидание клиента...', {
       fontSize: '18px', fontFamily: 'Arial', color: '#aaaaaa',
@@ -74,19 +94,33 @@ export class ClientManager {
     if (this.currentClient || this.scene.shiftPaused) return;
 
     const requestedId = this.pickRequestedId(packages, shelfRows, existingIdChance);
-    const color = Phaser.Utils.Array.GetRandom(COLORS.CLIENT);
+    const colorIndex = Phaser.Math.Between(0, 4);
 
-    this.currentClient = { requestedId, color };
+    this.currentClient = { requestedId, color: COLORS.CLIENT[colorIndex] };
 
-    this.clientRect.setFillStyle(color).setVisible(true);
+    // Use client texture
+    this.clientSprite.setTexture(`client_${colorIndex}`).setVisible(true);
     this.clientIdText.setText(`Посылка: ${requestedId}`).setVisible(true);
     this.clientLabel.setText('Клиент ожидает').setVisible(true);
     this.noClientText.setVisible(false);
+
+    // Entrance animation
+    this.clientSprite.setAlpha(0).setScale(0.8);
+    this.scene.tweens.add({
+      targets: this.clientSprite,
+      alpha: 1,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 300,
+      ease: 'Back.easeOut',
+    });
 
     this.updateDeliverButton();
 
     const bonusTime = (this.scene.upgrades.fasterBoots || 0) * 3;
     this.clientTimeLeft = Math.round(difficulty.clientTimerSec) + bonusTime;
+    this.clientTimeMax = this.clientTimeLeft;
+    this.updateTimerBar();
     this.scene.updateUI();
 
     if (this.clientTimerEvent) this.clientTimerEvent.destroy();
@@ -114,13 +148,51 @@ export class ClientManager {
     return randomId(shelfRows);
   }
 
+  updateTimerBar() {
+    if (!this.currentClient) {
+      this.timerBarBg.setVisible(false);
+      this.timerBarFill.setVisible(false);
+      this.timerBarText.setVisible(false);
+      return;
+    }
+
+    this.timerBarBg.setVisible(true);
+    this.timerBarFill.setVisible(true);
+    this.timerBarText.setVisible(true);
+
+    const ratio = this.clientTimeLeft / this.clientTimeMax;
+
+    // Choose color based on remaining time
+    if (ratio > 0.5) {
+      this.timerBarFill.setTexture('timer_bar_fill');
+    } else if (ratio > 0.25) {
+      this.timerBarFill.setTexture('timer_bar_warn');
+    } else {
+      this.timerBarFill.setTexture('timer_bar_danger');
+    }
+
+    this.timerBarFill.setScale(Math.max(0.01, ratio), 1);
+    this.timerBarText.setText(`${this.clientTimeLeft}с`);
+  }
+
   tickClientTimer() {
     if (this.scene.shiftPaused) return;
     this.clientTimeLeft--;
+    this.updateTimerBar();
     this.scene.updateUI();
 
     if (this.clientTimeLeft <= 5) {
       this.scene.timerText.setColor('#ff0000');
+      // Pulse animation on low time
+      if (this.clientSprite.visible) {
+        this.scene.tweens.add({
+          targets: this.clientSprite,
+          scaleX: 1.05,
+          scaleY: 1.05,
+          duration: 150,
+          yoyo: true,
+        });
+      }
     }
 
     if (this.clientTimeLeft <= 0) {
@@ -138,14 +210,17 @@ export class ClientManager {
 
   removeClient() {
     this.currentClient = null;
-    this.clientRect.setVisible(false);
+    this.clientSprite.setVisible(false);
     this.clientIdText.setVisible(false);
     this.clientLabel.setVisible(false);
     this.noClientText.setVisible(true);
     this.scene.selectedPackageId = null;
-    this.deliverZone.setVisible(false);
+    this.deliverBtn.setVisible(false);
     this.deliverText.setVisible(false);
     this.selectedLabel.setVisible(false);
+    this.timerBarBg.setVisible(false);
+    this.timerBarFill.setVisible(false);
+    this.timerBarText.setVisible(false);
     this.scene.timerText.setColor('#ff6b6b');
 
     if (this.clientTimerEvent) {
@@ -176,7 +251,7 @@ export class ClientManager {
 
   updateDeliverButton() {
     const show = this.currentClient && this.scene.selectedPackageId;
-    this.deliverZone.setVisible(!!show);
+    this.deliverBtn.setVisible(!!show);
     this.deliverText.setVisible(!!show);
     this.selectedLabel.setVisible(!!show);
     if (show) {

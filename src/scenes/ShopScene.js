@@ -70,15 +70,27 @@ export class ShopScene extends Phaser.Scene {
     }
 
     // Next Day button
-    const nextBtn = this.add.rectangle(450, 555, 200, 45, COLORS.ACCENT)
-      .setInteractive({ useHandCursor: true });
-    this.add.text(450, 555, 'СЛЕДУЮЩИЙ ДЕНЬ', {
+    this.createNextDayButton(450, 555, day, rating);
+  }
+
+  createNextDayButton(x, y, day, rating) {
+    const bg = this.add.rectangle(x, y, 200, 45, COLORS.ACCENT)
+      .setInteractive({ useHandCursor: true })
+      .setStrokeStyle(2, 0xc0354d);
+    const txt = this.add.text(x, y, 'СЛЕДУЮЩИЙ ДЕНЬ', {
       fontSize: '16px', fontFamily: 'Arial', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    nextBtn.on('pointerover', () => nextBtn.setFillStyle(0xff6b6b));
-    nextBtn.on('pointerout', () => nextBtn.setFillStyle(COLORS.ACCENT));
-    nextBtn.on('pointerdown', () => {
+    bg.on('pointerover', () => {
+      bg.setFillStyle(0xff6b6b);
+      this.tweens.add({ targets: [bg, txt], scaleX: 1.05, scaleY: 1.05, duration: 100 });
+    });
+    bg.on('pointerout', () => {
+      bg.setFillStyle(COLORS.ACCENT);
+      this.tweens.add({ targets: [bg, txt], scaleX: 1, scaleY: 1, duration: 100 });
+    });
+    bg.on('pointerdown', () => {
+      bg.setFillStyle(0xc0354d);
       this.scene.start('GameScene', {
         coins: this.playerCoins,
         rating,
@@ -95,7 +107,8 @@ export class ShopScene extends Phaser.Scene {
     const canAfford = !maxed && this.playerCoins >= cost;
 
     // Background
-    this.add.rectangle(450, y, 750, 55, 0x0f3460, 0.8).setStrokeStyle(1, 0x333366);
+    const rowBg = this.add.rectangle(450, y, 750, 55, 0x0f3460, 0.8)
+      .setStrokeStyle(1, 0x333366);
 
     // Name + description
     this.add.text(100, y - 12, upg.name, {
@@ -105,20 +118,28 @@ export class ShopScene extends Phaser.Scene {
       fontSize: '12px', fontFamily: 'Arial', color: '#aaaaaa',
     }).setOrigin(0, 0.5);
 
-    // Level
-    this.add.text(500, y, `Ур. ${currentLevel}/${upg.maxLevel}`, {
-      fontSize: '14px', fontFamily: 'Arial', color: '#ffd700',
+    // Level indicator with filled pips
+    const pipStartX = 500;
+    for (let i = 0; i < upg.maxLevel; i++) {
+      const pipColor = i < currentLevel ? 0xffd700 : 0x444444;
+      this.add.circle(pipStartX + i * 16, y, 5, pipColor);
+    }
+    this.add.text(pipStartX + upg.maxLevel * 16 + 5, y, `${currentLevel}/${upg.maxLevel}`, {
+      fontSize: '12px', fontFamily: 'Arial', color: '#ffd700',
     }).setOrigin(0, 0.5);
 
     // Buy button
     if (maxed) {
+      const maxBg = this.add.rectangle(700, y, 110, 35, 0x333333)
+        .setStrokeStyle(1, 0x444444);
       this.add.text(700, y, 'МАКС', {
         fontSize: '14px', fontFamily: 'Arial', color: '#888888', fontStyle: 'bold',
       }).setOrigin(0.5);
     } else {
       const btnColor = canAfford ? 0x2ecc71 : 0x555555;
+      const btnBorder = canAfford ? 0x27ae60 : 0x444444;
       const btn = this.add.rectangle(700, y, 110, 35, btnColor)
-        .setStrokeStyle(1, canAfford ? 0x27ae60 : 0x444444);
+        .setStrokeStyle(1, btnBorder);
 
       const btnText = this.add.text(700, y, `${cost} монет`, {
         fontSize: '13px', fontFamily: 'Arial', color: '#ffffff', fontStyle: 'bold',
@@ -126,9 +147,16 @@ export class ShopScene extends Phaser.Scene {
 
       if (canAfford) {
         btn.setInteractive({ useHandCursor: true });
-        btn.on('pointerover', () => btn.setFillStyle(0x27ae60));
-        btn.on('pointerout', () => btn.setFillStyle(0x2ecc71));
+        btn.on('pointerover', () => {
+          btn.setFillStyle(0x27ae60);
+          this.tweens.add({ targets: [btn, btnText], scaleX: 1.08, scaleY: 1.08, duration: 80 });
+        });
+        btn.on('pointerout', () => {
+          btn.setFillStyle(0x2ecc71);
+          this.tweens.add({ targets: [btn, btnText], scaleX: 1, scaleY: 1, duration: 80 });
+        });
         btn.on('pointerdown', () => {
+          btn.setFillStyle(0x1b8a45);
           this.playerCoins -= cost;
           this.playerUpgrades[upg.id] = currentLevel + 1;
           this.scene.restart({
@@ -137,6 +165,10 @@ export class ShopScene extends Phaser.Scene {
             upgrades: this.playerUpgrades,
           });
         });
+      } else {
+        // Disabled state - grey tint
+        btn.setAlpha(0.6);
+        btnText.setAlpha(0.6);
       }
     }
   }

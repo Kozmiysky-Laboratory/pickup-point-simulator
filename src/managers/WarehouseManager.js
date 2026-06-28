@@ -28,7 +28,6 @@ export class WarehouseManager {
   }
 
   buildGrid(shelfRows, shelfCols) {
-    // Remove old shelf graphics
     for (const shelf of this.shelves) {
       shelf.bg.destroy();
       shelf.label.destroy();
@@ -50,8 +49,10 @@ export class WarehouseManager {
         const y = startY + r * cellH;
         const shelfId = `${shelfRows[r]}${shelfCols[c]}`;
 
-        const bg = this.scene.add.rectangle(x, y, cellW - 10, cellH - 10, COLORS.SHELF)
-          .setStrokeStyle(2, COLORS.SHELF_BORDER);
+        const bg = this.scene.add.image(x, y, 'shelf');
+        const scaleW = (cellW - 10) / 150;
+        const scaleH = (cellH - 10) / 110;
+        bg.setScale(scaleW, scaleH);
         this.container.add(bg);
 
         const label = this.scene.add.text(x, y - (cellH / 2 - 15), shelfId, {
@@ -59,7 +60,7 @@ export class WarehouseManager {
         }).setOrigin(0.5);
         this.container.add(label);
 
-        this.shelves.push({ id: shelfId, x, y, bg, label, packageObj: null });
+        this.shelves.push({ id: shelfId, x, y, bg, label, packageObj: null, scaleW, scaleH });
       }
     }
   }
@@ -81,23 +82,26 @@ export class WarehouseManager {
     if (this.packages.has(pkgId)) return;
 
     const s = this.scene;
-    const rect = s.add.rectangle(shelf.x, shelf.y + 5, 60, 40, COLORS.PKG_DEFAULT)
-      .setInteractive({ useHandCursor: true })
-      .setStrokeStyle(2, COLORS.PKG_BORDER);
+    const img = s.add.image(shelf.x, shelf.y + 5, 'pkg_default')
+      .setInteractive({ useHandCursor: true });
     const text = s.add.text(shelf.x, shelf.y + 5, pkgId, {
       fontSize: '12px', fontFamily: 'Arial', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    this.container.add(rect);
+    this.container.add(img);
     this.container.add(text);
 
-    rect.on('pointerover', () => rect.setFillStyle(COLORS.PKG_HOVER));
-    rect.on('pointerout', () => {
-      rect.setFillStyle(s.selectedPackageId === pkgId ? COLORS.PKG_SELECTED : COLORS.PKG_DEFAULT);
+    img.on('pointerover', () => {
+      if (s.selectedPackageId !== pkgId) img.setTexture('pkg_hover');
+      img.setScale(1.1);
     });
-    rect.on('pointerdown', () => s.selectPackage(pkgId, rect));
+    img.on('pointerout', () => {
+      img.setTexture(s.selectedPackageId === pkgId ? 'pkg_selected' : 'pkg_default');
+      img.setScale(1);
+    });
+    img.on('pointerdown', () => s.selectPackage(pkgId, img));
 
-    const pkg = { id: pkgId, rect, text, shelf };
+    const pkg = { id: pkgId, rect: img, text, shelf };
     shelf.packageObj = pkg;
     this.packages.set(pkgId, pkg);
   }
@@ -142,7 +146,7 @@ export class WarehouseManager {
 
   resetHighlights() {
     this.packages.forEach((pkg) => {
-      pkg.rect.setFillStyle(COLORS.PKG_DEFAULT);
+      pkg.rect.setTexture('pkg_default');
     });
     for (const timer of this.highlightTimers) {
       timer.destroy();
@@ -155,11 +159,11 @@ export class WarehouseManager {
     if (!pkg) return;
 
     const shelf = pkg.shelf;
-    shelf.bg.setStrokeStyle(4, COLORS.PKG_HIGHLIGHT);
+    shelf.bg.setTexture('shelf_highlight');
 
     const duration = 3000 + (this.scene.upgrades.sortAssist - 1) * 1500;
     const timer = this.scene.time.delayedCall(duration, () => {
-      shelf.bg.setStrokeStyle(2, COLORS.SHELF_BORDER);
+      shelf.bg.setTexture('shelf');
     });
     this.highlightTimers.push(timer);
   }

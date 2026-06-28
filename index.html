@@ -3,12 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <title>Симулятор ПВЗ — Pickup Point Simulator</title>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { background: #1a1a2e; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-      #game-container { border: 2px solid #e94560; border-radius: 4px; }
+      html, body {
+        width: 100%; height: 100%;
+        overflow: hidden;
+        background: #1a1a2e;
+        touch-action: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      #game-container {
+        width: 100%;
+        height: 100%;
+      }
+      #game-container canvas {
+        display: block;
+      }
     </style>
   </head>
   <body>

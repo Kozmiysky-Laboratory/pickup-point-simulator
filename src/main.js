@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { PreloadScene } from './scenes/PreloadScene.js';
 import { BootScene } from './scenes/BootScene.js';
 import { GameScene } from './scenes/GameScene.js';
 import { ShopScene } from './scenes/ShopScene.js';
@@ -9,10 +10,15 @@ const config = {
   height: 600,
   parent: 'game-container',
   backgroundColor: '#f0e6d3',
-  scene: [BootScene, GameScene, ShopScene],
+  scene: [PreloadScene, BootScene, GameScene, ShopScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
+    min: { width: 320, height: 480 },
+    max: { width: 1920, height: 1080 },
+  },
+  input: {
+    activePointers: 3,
   },
 };
 
