@@ -34,6 +34,18 @@ const COLORS = {
   OVERLAY: 0x000000,
 };
 
+function shadeColor(hex, percent) {
+  const t = percent < 0 ? 0 : 255;
+  const p = Math.abs(percent);
+  let r = (hex >> 16) & 255;
+  let gv = (hex >> 8) & 255;
+  let b = hex & 255;
+  r = Math.round((t - r) * p + r);
+  gv = Math.round((t - gv) * p + gv);
+  b = Math.round((t - b) * p + b);
+  return (r << 16) | (gv << 8) | b;
+}
+
 const UPGRADES = {
   FASTER_BOOTS: {
     id: 'fasterBoots',
@@ -131,64 +143,57 @@ class ClientManager {
   createCounterView(container) {
     const s = this.scene;
 
-    const desk = s.add.rectangle(450, 400, 700, 12, COLORS.DESK);
-    container.add(desk);
+    container.add(s.add.image(450, 300, 'counter_scene'));
+    container.add(s.add.image(450, 86, 'plaque'));
+    container.add(s.add.text(450, 84, 'СТОЙКА ВЫДАЧИ', {
+      fontSize: '18px', fontFamily: 'Arial', color: '#fff8ee', fontStyle: 'bold',
+    }).setOrigin(0.5));
+    container.add(s.add.text(252, 108, 'ПВЗ', {
+      fontSize: '15px', fontFamily: 'Arial', color: '#1e3a5f', fontStyle: 'bold',
+    }).setOrigin(0.5));
 
-    const label = s.add.text(450, 70, 'СТОЙКА ВЫДАЧИ', {
-      fontSize: '22px', fontFamily: 'Arial', color: '#16213e', fontStyle: 'bold',
-    }).setOrigin(0.5);
-    container.add(label);
-
-    const waitArea = s.add.rectangle(450, 280, 300, 200, 0xe8dcc8, 0.5)
-      .setStrokeStyle(2, 0x999999);
-    container.add(waitArea);
-
-    const waitLabel = s.add.text(450, 195, 'Зона ожидания', {
-      fontSize: '14px', fontFamily: 'Arial', color: '#888888',
-    }).setOrigin(0.5);
-    container.add(waitLabel);
-
-    // Client sprite (using generated texture)
-    this.clientSprite = s.add.image(450, 280, 'client_0').setVisible(false);
+    this.clientSprite = s.add.image(450, 300, 'client_0').setVisible(false);
     container.add(this.clientSprite);
 
-    this.clientIdText = s.add.text(450, 215, '', {
-      fontSize: '16px', fontFamily: 'Arial', color: '#ffffff', fontStyle: 'bold',
-      backgroundColor: '#333333', padding: { x: 6, y: 3 },
+    this.clientIdText = s.add.text(450, 136, '', {
+      fontSize: '16px', fontFamily: 'Arial', color: '#2c2416', fontStyle: 'bold',
+      backgroundColor: '#fff8ee', padding: { x: 8, y: 4 },
     }).setOrigin(0.5).setVisible(false);
     container.add(this.clientIdText);
 
-    this.clientLabel = s.add.text(450, 345, '', {
-      fontSize: '13px', fontFamily: 'Arial', color: '#333333',
+    this.clientLabel = s.add.text(450, 164, '', {
+      fontSize: '13px', fontFamily: 'Arial', color: '#5c4632', fontStyle: 'bold',
     }).setOrigin(0.5).setVisible(false);
     container.add(this.clientLabel);
 
-    // Timer bar
-    this.timerBarBg = s.add.image(450, 365, 'timer_bar_bg').setVisible(false);
+    container.add(s.add.image(450, 400, 'counter_desk'));
+    container.add(s.add.image(196, 348, 'bell'));
+
+    this.timerBarBg = s.add.image(450, 404, 'timer_bar_bg').setVisible(false);
     container.add(this.timerBarBg);
 
-    this.timerBarFill = s.add.image(450, 365, 'timer_bar_fill')
+    this.timerBarFill = s.add.image(450, 404, 'timer_bar_fill')
       .setVisible(false).setOrigin(0.5);
     container.add(this.timerBarFill);
 
-    this.timerBarText = s.add.text(450, 365, '', {
-      fontSize: '10px', fontFamily: 'Arial', color: '#ffffff', fontStyle: 'bold',
-    }).setOrigin(0.5).setVisible(false).setDepth(10);
+    this.timerBarText = s.add.text(450, 404, '', {
+      fontSize: '11px', fontFamily: 'Arial', color: '#fff8ee', fontStyle: 'bold',
+    }).setOrigin(0.5).setVisible(false);
     container.add(this.timerBarText);
 
-    // Deliver button (using generated texture)
-    this.deliverBtn = s.add.image(450, 470, 'deliver_normal')
+    this.deliverBtn = s.add.image(450, 492, 'deliver_normal')
       .setInteractive({ useHandCursor: true })
       .setVisible(false);
     container.add(this.deliverBtn);
 
-    this.deliverText = s.add.text(450, 470, 'ВЫДАТЬ ПОСЫЛКУ', {
-      fontSize: '14px', fontFamily: 'Arial', color: '#ffffff', fontStyle: 'bold',
+    this.deliverText = s.add.text(450, 490, 'ВЫДАТЬ ПОСЫЛКУ', {
+      fontSize: '16px', fontFamily: 'Arial', color: '#fff8ee', fontStyle: 'bold',
     }).setOrigin(0.5).setVisible(false);
     container.add(this.deliverText);
 
-    this.selectedLabel = s.add.text(450, 505, '', {
-      fontSize: '12px', fontFamily: 'Arial', color: '#16213e',
+    this.selectedLabel = s.add.text(450, 534, '', {
+      fontSize: '13px', fontFamily: 'Arial', color: '#2c2416', fontStyle: 'bold',
+      backgroundColor: '#fff8ee', padding: { x: 6, y: 3 },
     }).setOrigin(0.5).setVisible(false);
     container.add(this.selectedLabel);
 
@@ -199,8 +204,8 @@ class ClientManager {
       this.scene.deliverPackage();
     });
 
-    this.noClientText = s.add.text(450, 280, 'Ожидание клиента...', {
-      fontSize: '18px', fontFamily: 'Arial', color: '#aaaaaa',
+    this.noClientText = s.add.text(450, 250, 'Ожидание клиента...', {
+      fontSize: '18px', fontFamily: 'Arial', color: '#6b5344', fontStyle: 'bold',
     }).setOrigin(0.5);
     container.add(this.noClientText);
   }
@@ -370,6 +375,7 @@ class ClientManager {
     this.deliverText.setVisible(!!show);
     this.selectedLabel.setVisible(!!show);
     if (show) {
+      this.deliverBtn.setTexture('deliver_normal');
       this.selectedLabel.setText(`Выбрано: ${this.scene.selectedPackageId}`);
     }
   }
@@ -405,12 +411,15 @@ class WarehouseManager {
     this.container = container;
     const s = this.scene;
 
-    const label = s.add.text(450, 70, 'СКЛАД', {
-      fontSize: '22px', fontFamily: 'Arial', color: '#16213e', fontStyle: 'bold',
+    container.add(s.add.image(450, 300, 'warehouse_scene'));
+    container.add(s.add.image(450, 80, 'plaque'));
+
+    const label = s.add.text(450, 78, 'СКЛАД', {
+      fontSize: '20px', fontFamily: 'Arial', color: '#fff8ee', fontStyle: 'bold',
     }).setOrigin(0.5);
     container.add(label);
 
-    this.requestText = s.add.text(450, 100, '', {
+    this.requestText = s.add.text(450, 108, '', {
       fontSize: '18px', fontFamily: 'Arial', color: '#e94560', fontStyle: 'bold',
       backgroundColor: '#fff5f5', padding: { x: 8, y: 4 },
     }).setOrigin(0.5);
@@ -448,7 +457,8 @@ class WarehouseManager {
         this.container.add(bg);
 
         const label = this.scene.add.text(x, y - (cellH / 2 - 15), shelfId, {
-          fontSize: '14px', fontFamily: 'Arial', color: '#555555', fontStyle: 'bold',
+          fontSize: '13px', fontFamily: 'Arial', color: '#fff8ee', fontStyle: 'bold',
+          stroke: '#3a2415', strokeThickness: 3,
         }).setOrigin(0.5);
         this.container.add(label);
 
@@ -477,7 +487,8 @@ class WarehouseManager {
     const img = s.add.image(shelf.x, shelf.y + 5, 'pkg_default')
       .setInteractive({ useHandCursor: true });
     const text = s.add.text(shelf.x, shelf.y + 5, pkgId, {
-      fontSize: '12px', fontFamily: 'Arial', color: '#ffffff', fontStyle: 'bold',
+      fontSize: '12px', fontFamily: 'Arial', color: '#2c2416', fontStyle: 'bold',
+      stroke: '#fff8ee', strokeThickness: 3,
     }).setOrigin(0.5);
 
     this.container.add(img);
@@ -589,179 +600,490 @@ class PreloadScene extends Phaser.Scene {
     this.generateClient();
     this.generatePackage();
     this.generateShelf();
-    this.generateButton();
-    this.generateDeliverButton();
+    this.generateButtons();
     this.generateTimerBar();
+    this.generateIcons();
+    this.generateScenes();
   }
 
   generateClient() {
-    const colors = [0x3498db, 0xe67e22, 0x9b59b6, 0x1abc9c, 0xf39c12];
-    colors.forEach((color, i) => {
-      const g = this.make.graphics({ add: false });
-      const r = (color >> 16) & 0xff;
-      const gv = (color >> 8) & 0xff;
-      const b = color & 0xff;
+    COLORS.CLIENT.forEach((color, i) => this.paintClient(i, color));
+  }
 
-      // Body
-      g.fillStyle(color, 1);
-      g.fillRoundedRect(10, 30, 60, 70, 8);
+  paintClient(i, cloth) {
+    const g = this.make.graphics({ add: false });
+    const skin = 0xf3c7a4;
+    const skinDeep = 0xd9a47e;
+    const hair = [0x2c2118, 0x6a3b22, 0x1c1c1c, 0x8d6840, 0x3a2a44][i];
+    const clothDeep = shadeColor(cloth, -0.28);
 
-      // Head
-      g.fillStyle(color, 1);
-      g.fillCircle(40, 22, 18);
+    g.fillStyle(0x000000, 0.18);
+    g.fillEllipse(48, 132, 46, 12);
 
-      // Face
-      g.fillStyle(0xffffff, 1);
-      g.fillCircle(33, 18, 4);
-      g.fillCircle(47, 18, 4);
-      g.fillStyle(0x333333, 1);
-      g.fillCircle(33, 18, 2);
-      g.fillCircle(47, 18, 2);
+    g.fillStyle(0x2c3548, 1);
+    g.fillRoundedRect(30, 102, 14, 26, 4);
+    g.fillRoundedRect(52, 102, 14, 26, 4);
+    g.fillStyle(0x241910, 1);
+    g.fillRoundedRect(26, 122, 20, 9, 3);
+    g.fillRoundedRect(50, 122, 20, 9, 3);
 
-      // Smile
-      g.lineStyle(2, 0x333333, 1);
-      g.beginPath();
-      g.arc(40, 26, 6, 0.2, Math.PI - 0.2);
-      g.strokePath();
+    g.fillStyle(cloth, 1);
+    g.fillRoundedRect(8, 66, 16, 34, 7);
+    g.fillRoundedRect(72, 66, 16, 34, 7);
+    g.fillStyle(skin, 1);
+    g.fillCircle(16, 100, 7);
+    g.fillCircle(80, 100, 7);
 
-      // Border
-      g.lineStyle(2, Math.max(0, (r - 40) << 16 | (gv - 40) << 8 | (b - 40)), 1);
-      g.strokeRoundedRect(10, 30, 60, 70, 8);
+    g.fillStyle(cloth, 1);
+    g.fillRoundedRect(22, 60, 52, 48, 12);
+    g.fillStyle(clothDeep, 1);
+    g.fillRect(22, 94, 52, 12);
+    g.fillStyle(0x000000, 0.15);
+    g.fillRoundedRect(36, 78, 24, 14, 3);
+    g.fillStyle(0xfff8ee, 1);
+    g.fillTriangle(38, 62, 58, 62, 48, 78);
+    g.fillStyle(skinDeep, 1);
+    g.fillRoundedRect(42, 52, 12, 14, 3);
 
-      g.generateTexture(`client_${i}`, 80, 100);
-      g.destroy();
-    });
+    g.fillStyle(skin, 1);
+    g.fillCircle(28, 40, 5);
+    g.fillCircle(68, 40, 5);
+    g.fillStyle(hair, 1);
+    g.fillCircle(48, 30, 20);
+    g.fillStyle(skin, 1);
+    g.fillCircle(48, 40, 16);
+    g.fillStyle(hair, 1);
+    g.fillEllipse(48, 26, 36, 16);
+
+    g.fillStyle(0xfffaf2, 1);
+    g.fillEllipse(41, 40, 8, 9);
+    g.fillEllipse(55, 40, 8, 9);
+    g.fillStyle(0x2a241c, 1);
+    g.fillCircle(42, 41, 2.2);
+    g.fillCircle(56, 41, 2.2);
+    g.lineStyle(2, hair, 1);
+    g.lineBetween(36, 34, 46, 35);
+    g.lineBetween(50, 35, 60, 34);
+    g.lineStyle(2, 0xa15b48, 1);
+    g.beginPath();
+    g.arc(48, 46, 6, 0.25, Math.PI - 0.25, false);
+    g.strokePath();
+    g.fillStyle(0xe7a090, 0.4);
+    g.fillEllipse(36, 46, 6, 3);
+    g.fillEllipse(60, 46, 6, 3);
+
+    g.generateTexture('client_' + i, 96, 140);
+    g.destroy();
   }
 
   generatePackage() {
-    // Default
-    const gd = this.make.graphics({ add: false });
-    gd.fillStyle(0xc0392b, 1);
-    gd.fillRoundedRect(2, 2, 56, 36, 4);
-    gd.lineStyle(2, 0x922b21, 1);
-    gd.strokeRoundedRect(2, 2, 56, 36, 4);
-    gd.lineStyle(1, 0xffffff, 0.3);
-    gd.lineBetween(30, 4, 30, 36);
-    gd.lineBetween(4, 20, 56, 20);
-    gd.generateTexture('pkg_default', 60, 40);
-    gd.destroy();
+    this.paintPackage('pkg_default', 0xd7b07a, 0x7a4a28, 0xc45c26, 2);
+    this.paintPackage('pkg_hover', 0xf0d09a, 0xa85a28, 0xe07030, 2);
+    this.paintPackage('pkg_selected', 0xe7c48a, 0x1d6fa5, 0x2478b0, 3);
+  }
 
-    // Hover
-    const gh = this.make.graphics({ add: false });
-    gh.fillStyle(0xe74c3c, 1);
-    gh.fillRoundedRect(2, 2, 56, 36, 4);
-    gh.lineStyle(2, 0xc0392b, 1);
-    gh.strokeRoundedRect(2, 2, 56, 36, 4);
-    gh.lineStyle(1, 0xffffff, 0.4);
-    gh.lineBetween(30, 4, 30, 36);
-    gh.lineBetween(4, 20, 56, 20);
-    gh.generateTexture('pkg_hover', 60, 40);
-    gh.destroy();
-
-    // Selected
-    const gs = this.make.graphics({ add: false });
-    gs.fillStyle(0x2980b9, 1);
-    gs.fillRoundedRect(2, 2, 56, 36, 4);
-    gs.lineStyle(3, 0x3498db, 1);
-    gs.strokeRoundedRect(2, 2, 56, 36, 4);
-    gs.lineStyle(1, 0xffffff, 0.4);
-    gs.lineBetween(30, 4, 30, 36);
-    gs.lineBetween(4, 20, 56, 20);
-    gs.generateTexture('pkg_selected', 60, 40);
-    gs.destroy();
+  paintPackage(key, body, edge, tape, borderW) {
+    const g = this.make.graphics({ add: false });
+    g.fillStyle(0x000000, 0.16);
+    g.fillRoundedRect(3, 4, 62, 38, 4);
+    g.fillStyle(body, 1);
+    g.fillRoundedRect(1, 1, 64, 40, 4);
+    g.fillStyle(edge, 0.25);
+    g.fillRect(1, 28, 64, 13);
+    g.fillStyle(tape, 1);
+    g.fillTriangle(1, 1, 16, 1, 1, 16);
+    g.fillTriangle(65, 41, 50, 41, 65, 26);
+    g.fillRect(1, 1, 64, 5);
+    g.fillRect(1, 36, 64, 5);
+    g.fillStyle(0xfffaf2, 1);
+    g.fillRoundedRect(7, 11, 54, 20, 3);
+    g.lineStyle(1, 0xd9c7ae, 1);
+    g.strokeRoundedRect(7, 11, 54, 20, 3);
+    g.lineStyle(borderW, edge, 1);
+    g.strokeRoundedRect(1.5, 1.5, 63, 39, 4);
+    g.generateTexture(key, 68, 44);
+    g.destroy();
   }
 
   generateShelf() {
+    this.paintShelf('shelf', false);
+    this.paintShelf('shelf_highlight', true);
+  }
+
+  paintShelf(key, highlight) {
     const g = this.make.graphics({ add: false });
-    g.fillStyle(0xdec9a4, 1);
-    g.fillRoundedRect(2, 2, 146, 106, 6);
-    g.lineStyle(2, 0x8b7355, 1);
-    g.strokeRoundedRect(2, 2, 146, 106, 6);
-    // Wood grain effect
-    g.lineStyle(1, 0xc9b48c, 0.4);
-    for (let i = 20; i < 100; i += 18) {
-      g.lineBetween(8, i, 142, i);
-    }
-    g.generateTexture('shelf', 150, 110);
+    const W = 150;
+    const H = 110;
+    g.fillStyle(0x000000, 0.18);
+    g.fillRoundedRect(4, 6, W - 6, H - 6, 4);
+    g.fillStyle(highlight ? 0xd7f0df : 0xf4e7d0, 1);
+    g.fillRect(12, 18, W - 24, H - 36);
+    g.fillStyle(0x000000, 0.07);
+    g.fillRect(12, 18, W - 24, 14);
+    g.fillStyle(0x5c3418, 1);
+    g.fillRect(0, 0, 12, H);
+    g.fillRect(W - 12, 0, 12, H);
+    g.fillStyle(0xa56b3c, 1);
+    g.fillRect(2, 0, 4, H);
+    g.fillRect(W - 6, 0, 4, H);
+    g.fillStyle(0x6b3e24, 1);
+    g.fillRect(0, 0, W, 16);
+    g.fillStyle(0xd7a15a, 1);
+    g.fillRect(0, 0, W, 5);
+    g.fillStyle(0x6b3e24, 1);
+    g.fillRect(0, H - 18, W, 18);
+    g.fillStyle(0xd7a15a, 1);
+    g.fillRect(0, H - 18, W, 5);
+    g.fillStyle(0x2a1a10, 1);
+    g.fillCircle(6, 8, 1.7);
+    g.fillCircle(W - 6, 8, 1.7);
+    g.fillCircle(6, H - 9, 1.7);
+    g.fillCircle(W - 6, H - 9, 1.7);
+    g.lineStyle(highlight ? 4 : 2, highlight ? 0x1f8a4c : 0x4a2c16, 1);
+    g.strokeRoundedRect(2, 2, W - 4, H - 4, 4);
+    g.generateTexture(key, W, H);
     g.destroy();
-
-    // Highlighted shelf
-    const gh = this.make.graphics({ add: false });
-    gh.fillStyle(0xdec9a4, 1);
-    gh.fillRoundedRect(2, 2, 146, 106, 6);
-    gh.lineStyle(4, 0x27ae60, 1);
-    gh.strokeRoundedRect(2, 2, 146, 106, 6);
-    gh.lineStyle(1, 0xc9b48c, 0.4);
-    for (let i = 20; i < 100; i += 18) {
-      gh.lineBetween(8, i, 142, i);
-    }
-    gh.generateTexture('shelf_highlight', 150, 110);
-    gh.destroy();
   }
 
-  generateButton() {
-    const states = [
-      { key: 'btn_normal', fill: 0x0f3460, border: 0x1a4a8a },
-      { key: 'btn_hover', fill: 0x533483, border: 0x6b44a8 },
-      { key: 'btn_active', fill: 0x1a4a8a, border: 0x2060b0 },
-      { key: 'btn_disabled', fill: 0x333333, border: 0x444444 },
-    ];
-    states.forEach(({ key, fill, border }) => {
-      const g = this.make.graphics({ add: false });
-      g.fillStyle(fill, 1);
-      g.fillRoundedRect(2, 2, 86, 30, 6);
-      g.lineStyle(2, border, 1);
-      g.strokeRoundedRect(2, 2, 86, 30, 6);
-      g.generateTexture(key, 90, 34);
-      g.destroy();
-    });
+  generateButtons() {
+    this.paintButton('btn_normal', 96, 36, 0x1e3a5f, 0x14283f);
+    this.paintButton('btn_hover', 96, 36, 0xd27a2c, 0x8a4e16);
+    this.paintButton('btn_active', 96, 36, 0xa85e18, 0x6e3c0e);
+    this.paintButton('btn_disabled', 96, 36, 0x5c5348, 0x3e3832);
+    this.paintButton('deliver_normal', 240, 54, 0x2f8f5b, 0x1e6b40);
+    this.paintButton('deliver_hover', 240, 54, 0x38a86a, 0x1e6b40);
+    this.paintButton('deliver_active', 240, 54, 0x21764a, 0x164e32);
+    this.paintButton('play_normal', 280, 64, 0xd6453d, 0x8e2c28);
+    this.paintButton('play_hover', 280, 64, 0xe26458, 0x8e2c28);
+    this.paintButton('play_active', 280, 64, 0xb1332e, 0x8e2c28);
+    this.paintButton('help_normal', 220, 46, 0x1e3a5f, 0x14283f);
+    this.paintButton('help_hover', 220, 46, 0x2d5688, 0x14283f);
+    this.paintButton('ok_normal', 180, 48, 0xd6453d, 0x8e2c28);
+    this.paintButton('ok_hover', 180, 48, 0xe26458, 0x8e2c28);
+    this.paintButton('nextday_normal', 250, 50, 0xd6453d, 0x8e2c28);
+    this.paintButton('nextday_hover', 250, 50, 0xe26458, 0x8e2c28);
+    this.paintButton('nextday_active', 250, 50, 0xb1332e, 0x8e2c28);
+    this.paintButton('buy_ok', 130, 38, 0x2f8f5b, 0x1e6b40);
+    this.paintButton('buy_hover', 130, 38, 0x38a86a, 0x1e6b40);
+    this.paintButton('buy_no', 130, 38, 0x6d6258, 0x4e453e);
+    this.paintButton('back_normal', 112, 36, 0xf2c14e, 0xc4922a);
+    this.paintButton('back_hover', 112, 36, 0xffe08a, 0xc4922a);
   }
 
-  generateDeliverButton() {
-    const states = [
-      { key: 'deliver_normal', fill: 0x2ecc71, border: 0x27ae60 },
-      { key: 'deliver_hover', fill: 0x27ae60, border: 0x219a52 },
-      { key: 'deliver_active', fill: 0x219a52, border: 0x1b8a45 },
-    ];
-    states.forEach(({ key, fill, border }) => {
-      const g = this.make.graphics({ add: false });
-      g.fillStyle(fill, 1);
-      g.fillRoundedRect(2, 2, 196, 50, 8);
-      g.lineStyle(2, border, 1);
-      g.strokeRoundedRect(2, 2, 196, 50, 8);
-      g.generateTexture(key, 200, 54);
-      g.destroy();
-    });
+  paintButton(key, w, h, fill, edge) {
+    const g = this.make.graphics({ add: false });
+    g.fillStyle(edge, 1);
+    g.fillRoundedRect(2, 4, w - 4, h - 6, 10);
+    g.fillStyle(fill, 1);
+    g.fillRoundedRect(2, 1, w - 4, h - 8, 10);
+    g.fillStyle(0xffffff, 0.2);
+    g.fillRoundedRect(8, 4, w - 16, Math.max(6, Math.round((h - 8) * 0.28)), 6);
+    g.generateTexture(key, w, h);
+    g.destroy();
   }
 
   generateTimerBar() {
-    // Timer bar background
     const gb = this.make.graphics({ add: false });
-    gb.fillStyle(0x333333, 1);
-    gb.fillRoundedRect(0, 0, 200, 12, 6);
-    gb.generateTexture('timer_bar_bg', 200, 12);
+    gb.fillStyle(0x2a2118, 1);
+    gb.fillRoundedRect(0, 0, 200, 16, 8);
+    gb.lineStyle(2, 0x6b5344, 1);
+    gb.strokeRoundedRect(1, 1, 198, 14, 7);
+    gb.generateTexture('timer_bar_bg', 200, 16);
     gb.destroy();
+    this.paintBar('timer_bar_fill', 0x2f8f5b);
+    this.paintBar('timer_bar_warn', 0xe0a23a);
+    this.paintBar('timer_bar_danger', 0xd6453d);
+  }
 
-    // Timer bar fill (green)
-    const gf = this.make.graphics({ add: false });
-    gf.fillStyle(0x2ecc71, 1);
-    gf.fillRoundedRect(0, 0, 200, 12, 6);
-    gf.generateTexture('timer_bar_fill', 200, 12);
-    gf.destroy();
+  paintBar(key, color) {
+    const g = this.make.graphics({ add: false });
+    g.fillStyle(color, 1);
+    g.fillRoundedRect(0, 0, 200, 16, 8);
+    g.fillStyle(0xffffff, 0.28);
+    g.fillRoundedRect(4, 2, 192, 5, 3);
+    g.generateTexture(key, 200, 16);
+    g.destroy();
+  }
 
-    // Timer bar fill (yellow)
-    const gy = this.make.graphics({ add: false });
-    gy.fillStyle(0xf39c12, 1);
-    gy.fillRoundedRect(0, 0, 200, 12, 6);
-    gy.generateTexture('timer_bar_warn', 200, 12);
-    gy.destroy();
+  generateIcons() {
+    const coin = this.make.graphics({ add: false });
+    coin.fillStyle(0xb8860b, 1);
+    coin.fillCircle(11, 11, 10);
+    coin.fillStyle(0xf2c14e, 1);
+    coin.fillCircle(11, 11, 8);
+    coin.fillStyle(0xffe7a3, 1);
+    coin.fillCircle(8, 8, 3);
+    coin.lineStyle(1.5, 0xa87412, 1);
+    coin.strokeCircle(11, 11, 5);
+    coin.generateTexture('coin', 22, 22);
+    coin.destroy();
 
-    // Timer bar fill (red)
-    const gr = this.make.graphics({ add: false });
-    gr.fillStyle(0xe74c3c, 1);
-    gr.fillRoundedRect(0, 0, 200, 12, 6);
-    gr.generateTexture('timer_bar_danger', 200, 12);
-    gr.destroy();
+    const star = this.make.graphics({ add: false });
+    star.fillStyle(0xf2c14e, 1);
+    const pts = [];
+    for (let i = 0; i < 10; i++) {
+      const ang = -Math.PI / 2 + i * Math.PI / 5;
+      const rad = i % 2 === 0 ? 10 : 4.4;
+      pts.push({ x: 11 + Math.cos(ang) * rad, y: 11 + Math.sin(ang) * rad });
+    }
+    star.fillPoints(pts, true);
+    star.lineStyle(1, 0xa87412, 1);
+    star.strokePoints(pts, true);
+    star.generateTexture('star', 22, 22);
+    star.destroy();
+
+    const bell = this.make.graphics({ add: false });
+    bell.fillStyle(0x000000, 0.16);
+    bell.fillEllipse(28, 30, 46, 8);
+    bell.fillStyle(0xf2c14e, 1);
+    bell.fillCircle(28, 18, 13);
+    bell.fillStyle(0xc4922a, 1);
+    bell.fillRoundedRect(4, 18, 48, 8, 3);
+    bell.fillStyle(0xe8c15a, 1);
+    bell.fillRoundedRect(8, 18, 40, 5, 2);
+    bell.fillStyle(0xfff1c2, 1);
+    bell.fillEllipse(22, 13, 10, 6);
+    bell.fillStyle(0x6b3e24, 1);
+    bell.fillCircle(28, 5, 3);
+    bell.generateTexture('bell', 56, 34);
+    bell.destroy();
+
+    const plaque = this.make.graphics({ add: false });
+    plaque.fillStyle(0x14283f, 1);
+    plaque.fillRoundedRect(0, 3, 280, 34, 8);
+    plaque.fillStyle(0x1e3a5f, 1);
+    plaque.fillRoundedRect(0, 0, 280, 32, 8);
+    plaque.fillStyle(0xf2c14e, 1);
+    plaque.fillRect(16, 28, 248, 3);
+    plaque.generateTexture('plaque', 280, 36);
+    plaque.destroy();
+
+    const hud = this.make.graphics({ add: false });
+    hud.fillStyle(0x1b314f, 1);
+    hud.fillRect(0, 0, 900, 50);
+    hud.fillStyle(0xf2c14e, 1);
+    hud.fillRect(0, 47, 900, 3);
+    hud.generateTexture('hud_bar', 900, 50);
+    hud.destroy();
+  }
+
+  generateScenes() {
+    this.paintCounterDesk();
+    this.paintHelpPanel();
+    this.paintReceipt();
+    this.paintShopRow();
+    this.paintMenuBg();
+    this.paintCounterScene();
+    this.paintWarehouseScene();
+    this.paintShopBg();
+  }
+
+  paintCounterDesk() {
+    const g = this.make.graphics({ add: false });
+    const w = 820;
+    const h = 120;
+    g.fillStyle(0xc9843e, 1);
+    g.fillRoundedRect(0, 0, w, 28, 6);
+    g.fillStyle(0xf0cb8a, 1);
+    g.fillRect(12, 4, w - 24, 8);
+    g.fillStyle(0x8a532c, 1);
+    g.fillRoundedRect(8, 22, w - 16, h - 30, 8);
+    g.fillStyle(0x5c3418, 1);
+    g.fillRect(8, 22, w - 16, 10);
+    g.fillStyle(0x6e4222, 1);
+    for (let i = 0; i < 4; i++) {
+      const x = 36 + i * 192;
+      g.fillRoundedRect(x, 46, 156, 56, 4);
+    }
+    g.lineStyle(2, 0xc4925a, 0.75);
+    for (let i = 0; i < 4; i++) {
+      g.strokeRoundedRect(36 + i * 192, 46, 156, 56, 4);
+    }
+    g.fillStyle(0x3a2415, 1);
+    g.fillRect(28, h - 10, 16, 10);
+    g.fillRect(w - 44, h - 10, 16, 10);
+    g.generateTexture('counter_desk', w, h);
+    g.destroy();
+  }
+
+  paintHelpPanel() {
+    const g = this.make.graphics({ add: false });
+    const w = 560;
+    const h = 340;
+    g.fillStyle(0x6b3e24, 1);
+    g.fillRoundedRect(0, 6, w, h - 6, 16);
+    g.fillStyle(0xfff8ee, 1);
+    g.fillRoundedRect(0, 0, w, h - 8, 16);
+    g.lineStyle(3, 0xe2c8a4, 1);
+    g.strokeRoundedRect(14, 14, w - 28, h - 36, 10);
+    g.lineStyle(2, 0xe2c8a4, 1);
+    g.lineBetween(40, 52, w - 40, 52);
+    g.generateTexture('help_panel', w, h);
+    g.destroy();
+  }
+
+  paintReceipt() {
+    const g = this.make.graphics({ add: false });
+    const w = 500;
+    const h = 120;
+    g.fillStyle(0x6b3e24, 1);
+    g.fillRoundedRect(0, 4, w, h - 4, 12);
+    g.fillStyle(0xfff8ee, 1);
+    g.fillRoundedRect(0, 0, w, h - 6, 12);
+    g.lineStyle(2, 0xe2c8a4, 1);
+    g.strokeRoundedRect(8, 8, w - 16, h - 22, 8);
+    g.generateTexture('receipt', w, h);
+    g.destroy();
+  }
+
+  paintShopRow() {
+    const g = this.make.graphics({ add: false });
+    const w = 780;
+    const h = 56;
+    g.fillStyle(0x2a211c, 1);
+    g.fillRoundedRect(0, 3, w, h - 3, 10);
+    g.fillStyle(0x3e3128, 1);
+    g.fillRoundedRect(0, 0, w, h - 4, 10);
+    g.fillStyle(0xf2c14e, 1);
+    g.fillRoundedRect(0, 8, 6, h - 20, 2);
+    g.lineStyle(2, 0x6b5344, 1);
+    g.strokeRoundedRect(1, 1, w - 2, h - 6, 10);
+    g.generateTexture('shop_row', w, h);
+    g.destroy();
+  }
+
+  paintMenuBg() {
+    const g = this.make.graphics({ add: false });
+    this.paintRoom(g, 900, 600, 392);
+    this.paintWindow(g, 36, 118, 156, 108);
+    this.paintWindow(g, 708, 118, 156, 108);
+    g.lineStyle(4, 0x5c5348, 1);
+    g.lineBetween(260, 0, 260, 16);
+    g.lineBetween(640, 0, 640, 16);
+    g.fillStyle(0x1e3a5f, 1);
+    g.fillRoundedRect(170, 16, 560, 96, 12);
+    g.fillStyle(0xf6d98a, 1);
+    g.fillRoundedRect(184, 28, 532, 72, 8);
+    g.lineStyle(2, 0xc4922a, 1);
+    g.strokeRoundedRect(196, 38, 508, 52, 6);
+    g.generateTexture('menu_bg', 900, 600);
+    g.destroy();
+  }
+
+  paintCounterScene() {
+    const g = this.make.graphics({ add: false });
+    this.paintRoom(g, 900, 500, 292);
+    this.paintWindow(g, 24, 20, 160, 112);
+    this.paintWindow(g, 710, 20, 166, 112);
+    this.paintPoster(g, 214, 36);
+    g.fillStyle(0x8e3b3b, 1);
+    g.fillRoundedRect(250, 418, 400, 52, 8);
+    g.lineStyle(3, 0xf2c14e, 0.9);
+    g.strokeRoundedRect(262, 428, 376, 32, 6);
+    g.generateTexture('counter_scene', 900, 500);
+    g.destroy();
+  }
+
+  paintWarehouseScene() {
+    const g = this.make.graphics({ add: false });
+    g.fillStyle(0xefe2d0, 1);
+    g.fillRect(0, 0, 900, 500);
+    g.fillStyle(0xe5d4ba, 1);
+    for (let x = 0; x < 900; x += 120) g.fillRect(x, 0, 2, 340);
+    g.fillStyle(0xffe3a3, 0.2);
+    g.fillEllipse(450, 28, 420, 80);
+    g.fillStyle(0x3a342c, 1);
+    g.fillRoundedRect(418, 6, 64, 14, 3);
+    g.fillStyle(0xf2c14e, 1);
+    g.fillCircle(450, 26, 5);
+    g.fillStyle(0x8d8274, 1);
+    g.fillRect(0, 340, 900, 160);
+    g.fillStyle(0xf2c14e, 1);
+    g.fillRect(0, 340, 900, 6);
+    g.fillStyle(0x7a7064, 1);
+    for (let y = 360; y < 500; y += 22) g.fillRect(0, y, 900, 2);
+    this.paintStack(g, 22, 390);
+    this.paintStack(g, 812, 378);
+    g.generateTexture('warehouse_scene', 900, 500);
+    g.destroy();
+  }
+
+  paintShopBg() {
+    const g = this.make.graphics({ add: false });
+    g.fillStyle(0x2a211c, 1);
+    g.fillRect(0, 0, 900, 600);
+    g.fillStyle(0x342822, 1);
+    for (let x = 0; x < 900; x += 90) g.fillRect(x, 72, 86, 528);
+    g.fillStyle(0x1b314f, 1);
+    g.fillRect(0, 0, 900, 64);
+    g.fillStyle(0xf2c14e, 1);
+    g.fillRect(0, 64, 900, 4);
+    g.generateTexture('shop_bg', 900, 600);
+    g.destroy();
+  }
+
+  paintRoom(g, w, h, floorY) {
+    g.fillStyle(0xf7ead6, 1);
+    g.fillRect(0, 0, w, h);
+    g.fillStyle(0xf1dfc6, 1);
+    const panelH = Math.max(40, floorY - 36);
+    for (let x = 8; x < w; x += 108) {
+      g.fillRoundedRect(x, 14, 100, panelH, 6);
+    }
+    g.lineStyle(2, 0xe4cfae, 0.85);
+    for (let x = 8; x < w; x += 108) {
+      g.strokeRoundedRect(x, 14, 100, panelH, 6);
+    }
+    g.fillStyle(0x6b3e24, 1);
+    g.fillRect(0, floorY, w, 16);
+    g.fillStyle(0xd7a15a, 1);
+    g.fillRect(0, floorY, w, 4);
+    g.fillStyle(0xdcc3a0, 1);
+    g.fillRect(0, floorY + 16, w, h - floorY - 16);
+    g.lineStyle(2, 0xc8ab82, 0.9);
+    for (let y = floorY + 34; y < h; y += 26) g.lineBetween(0, y, w, y);
+    g.lineStyle(1, 0xb99572, 0.4);
+    for (let x = 24; x < w; x += 140) g.lineBetween(x, floorY + 16, x, h);
+  }
+
+  paintWindow(g, x, y, w, h) {
+    g.fillStyle(0x6b3e24, 1);
+    g.fillRoundedRect(x - 6, y - 6, w + 12, h + 12, 5);
+    g.fillStyle(0x9fd7ee, 1);
+    g.fillRect(x, y, w, h);
+    g.fillStyle(0xf7e2a8, 0.45);
+    g.fillRect(x, y + Math.floor(h * 0.58), w, Math.ceil(h * 0.42));
+    g.fillStyle(0xf6e7cf, 1);
+    g.fillRect(x + Math.floor(w / 2) - 3, y, 6, h);
+    g.fillRect(x, y + Math.floor(h / 2) - 3, w, 6);
+    g.fillStyle(0x8d5a32, 1);
+    g.fillRect(x - 10, y + h, w + 20, 8);
+  }
+
+  paintPoster(g, x, y) {
+    g.fillStyle(0x1e3a5f, 1);
+    g.fillRoundedRect(x, y, 76, 98, 6);
+    g.fillStyle(0xf6d98a, 1);
+    g.fillRoundedRect(x + 8, y + 10, 60, 24, 4);
+    g.fillStyle(0xc45c26, 1);
+    g.fillRoundedRect(x + 16, y + 44, 44, 30, 3);
+    g.fillStyle(0xd7b07a, 1);
+    g.fillRoundedRect(x + 20, y + 48, 36, 22, 2);
+    g.fillStyle(0xf2c14e, 1);
+    g.fillRect(x + 14, y + 82, 48, 5);
+  }
+
+  paintStack(g, x, y) {
+    g.fillStyle(0xb88958, 1);
+    g.fillRoundedRect(x, y + 28, 62, 36, 3);
+    g.fillStyle(0xc45c26, 1);
+    g.fillRect(x, y + 40, 62, 6);
+    g.fillStyle(0xd7b07a, 1);
+    g.fillRoundedRect(x + 8, y + 8, 50, 32, 3);
+    g.fillStyle(0xc45c26, 1);
+    g.fillRect(x + 8, y + 20, 50, 5);
+    g.fillStyle(0xfff8ee, 1);
+    g.fillRect(x + 16, y + 12, 22, 10);
   }
 }
 
@@ -774,71 +1096,120 @@ class BootScene extends Phaser.Scene {
   }
 
   create() {
-    this.add.rectangle(450, 300, 900, 600, 0x1a1a2e);
+    this.add.image(450, 300, 'menu_bg');
+    this.add.image(450, 300, 'client_1');
+    this.add.image(450, 400, 'counter_desk');
+    this.add.image(188, 348, 'bell');
+    this.add.image(548, 354, 'pkg_default').setAngle(-7);
+    this.add.image(630, 348, 'pkg_hover').setAngle(6).setScale(0.92);
+    this.add.image(706, 358, 'pkg_default').setAngle(-4).setScale(0.82);
 
-    this.add.text(450, 200, 'Симулятор ПВЗ', {
-      fontSize: '48px',
+    this.add.text(450, 52, 'Симулятор ПВЗ', {
+      fontSize: '40px',
       fontFamily: 'Arial, sans-serif',
-      color: '#e94560',
+      color: '#1e3a5f',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    this.add.text(450, 260, 'Pickup Point Simulator', {
-      fontSize: '20px',
+    this.add.text(450, 84, 'Выдай заказы до конца смены', {
+      fontSize: '16px',
       fontFamily: 'Arial, sans-serif',
-      color: '#ffffff',
+      color: '#5c3d22',
     }).setOrigin(0.5);
 
-    this.add.text(450, 300, 'Управляй пунктом выдачи заказов!', {
-      fontSize: '14px',
+    this.playBtn = this.add.image(450, 492, 'play_normal').setInteractive({ useHandCursor: true });
+    this.playText = this.add.text(450, 490, 'Играть', {
+      fontSize: '28px',
       fontFamily: 'Arial, sans-serif',
-      color: '#aaaaaa',
-    }).setOrigin(0.5);
-
-    const startBtn = this.add.rectangle(450, 380, 200, 55, 0xe94560, 1)
-      .setInteractive({ useHandCursor: true })
-      .setStrokeStyle(2, 0xc0354d);
-    const startText = this.add.text(450, 380, 'ИГРАТЬ', {
-      fontSize: '24px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#ffffff',
+      color: '#fff8ee',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    startBtn.on('pointerover', () => {
-      startBtn.setFillStyle(0xff6b6b);
+    this.playBtn.on('pointerover', () => {
+      this.playBtn.setTexture('play_hover');
       this.tweens.add({
-        targets: [startBtn, startText],
-        scaleX: 1.08,
-        scaleY: 1.08,
-        duration: 120,
+        targets: [this.playBtn, this.playText],
+        scaleX: 1.04,
+        scaleY: 1.04,
+        duration: 100,
       });
     });
-    startBtn.on('pointerout', () => {
-      startBtn.setFillStyle(0xe94560);
+    this.playBtn.on('pointerout', () => {
+      this.playBtn.setTexture('play_normal');
       this.tweens.add({
-        targets: [startBtn, startText],
+        targets: [this.playBtn, this.playText],
         scaleX: 1,
         scaleY: 1,
-        duration: 120,
+        duration: 100,
       });
     });
-    startBtn.on('pointerdown', () => {
-      startBtn.setFillStyle(0xc0354d);
+    this.playBtn.on('pointerdown', () => {
+      this.playBtn.setTexture('play_active');
       this.scene.start('GameScene');
     });
 
-    // Version
-    this.add.text(450, 560, 'v0.3.0', {
-      fontSize: '12px',
+    this.helpBtn = this.add.image(450, 566, 'help_normal').setInteractive({ useHandCursor: true });
+    this.helpText = this.add.text(450, 564, 'Как играть', {
+      fontSize: '18px',
       fontFamily: 'Arial, sans-serif',
-      color: '#555555',
+      color: '#fff8ee',
+      fontStyle: 'bold',
     }).setOrigin(0.5);
+    this.helpBtn.on('pointerover', () => this.helpBtn.setTexture('help_hover'));
+    this.helpBtn.on('pointerout', () => this.helpBtn.setTexture('help_normal'));
+    this.helpBtn.on('pointerdown', () => this.setHelp(true));
+
+    this.dim = this.add.rectangle(450, 300, 900, 600, 0x140e0a, 0.62)
+      .setDepth(30)
+      .setVisible(false);
+    this.dim.on('pointerdown', () => this.setHelp(false));
+
+    this.helpLayer = this.add.container(0, 0).setDepth(31).setVisible(false);
+    const panel = this.add.image(450, 308, 'help_panel');
+    const helpTitle = this.add.text(450, 168, 'Как играть', {
+      fontSize: '26px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#1e3a5f',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const helpBody = this.add.text(200, 200,
+      '«Стойка» и «Склад» переключают зал и склад.\n'
+      + 'На складе кликните посылку с нужным номером.\n'
+      + 'На стойке нажмите «Выдать посылку».\n\n'
+      + 'Верно: +10 монет и +1 к рейтингу.\n'
+      + 'Ошибка: -5 монет. Клиент ушёл — рейтинг -1.\n'
+      + 'Смена длится 90 секунд, потом магазин улучшений.',
+      {
+        fontSize: '16px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#3a2a1a',
+        lineSpacing: 4,
+        wordWrap: { width: 500 },
+      }
+    );
+    const closeBtn = this.add.image(450, 438, 'ok_normal').setInteractive({ useHandCursor: true });
+    const closeText = this.add.text(450, 436, 'Понятно', {
+      fontSize: '18px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#fff8ee',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    closeBtn.on('pointerover', () => closeBtn.setTexture('ok_hover'));
+    closeBtn.on('pointerout', () => closeBtn.setTexture('ok_normal'));
+    closeBtn.on('pointerdown', () => this.setHelp(false));
+
+    this.helpLayer.add([panel, helpTitle, helpBody, closeBtn, closeText]);
+    panel.setInteractive();
+  }
+
+  setHelp(open) {
+    this.helpLayer.setVisible(open);
+    this.dim.setVisible(open);
+    if (open) this.dim.setInteractive();
+    else this.dim.disableInteractive();
   }
 }
 
-
-/* ===== src/scenes/GameScene.js ===== */
 
 const EXTRA_ROWS = ['D', 'E', 'F'];
 
@@ -916,55 +1287,61 @@ class GameScene extends Phaser.Scene {
   }
 
   drawBackground() {
-    this.add.rectangle(450, 0, 2, 600, 0x333333).setOrigin(0.5, 0);
+    this.add.rectangle(450, 300, 900, 600, 0xf7ead6);
   }
 
-  /* ---------- UI ---------- */
-
   createUI() {
-    this.add.rectangle(450, 0, 900, 50, COLORS.TOP_BAR).setOrigin(0.5, 0);
+    this.hudBar = this.add.image(450, 25, 'hud_bar');
+    const topY = 24;
 
-    const topY = 14;
-    const fontSize = '14px';
+    this.coinIcon = this.add.image(22, topY, 'coin');
+    this.coinsText = this.add.text(38, topY, 'Монеты: 0', {
+      fontSize: '15px', fontFamily: 'Arial', color: '#ffe7a3', fontStyle: 'bold',
+    }).setOrigin(0, 0.5);
 
-    this.coinsText = this.add.text(10, topY, 'Монеты: 0', {
-      fontSize, fontFamily: 'Arial', color: '#ffd700', fontStyle: 'bold',
-    });
+    this.starIcon = this.add.image(210, topY, 'star');
+    this.ratingText = this.add.text(226, topY, 'Рейтинг: 0', {
+      fontSize: '15px', fontFamily: 'Arial', color: '#e7fff1', fontStyle: 'bold',
+    }).setOrigin(0, 0.5);
 
-    this.ratingText = this.add.text(140, topY, 'Рейтинг: 0', {
-      fontSize, fontFamily: 'Arial', color: '#00ff88', fontStyle: 'bold',
-    });
+    this.timerText = this.add.text(390, topY, 'Таймер: --', {
+      fontSize: '15px', fontFamily: 'Arial', color: '#ffd5ce', fontStyle: 'bold',
+    }).setOrigin(0, 0.5);
 
-    this.timerText = this.add.text(290, topY, 'Таймер: --', {
-      fontSize, fontFamily: 'Arial', color: '#ff6b6b', fontStyle: 'bold',
-    });
+    this.dayText = this.add.text(530, topY, 'День: ' + this.day, {
+      fontSize: '15px', fontFamily: 'Arial', color: '#d6ecff', fontStyle: 'bold',
+    }).setOrigin(0, 0.5);
 
-    this.dayText = this.add.text(440, topY, `День: ${this.day}`, {
-      fontSize, fontFamily: 'Arial', color: '#88ccff', fontStyle: 'bold',
-    });
-
-    // Shift timer bar in the top bar
-    this.shiftBarBg = this.add.rectangle(700, topY + 8, 160, 14, 0x333333, 0.8)
+    this.shiftBarBg = this.add.rectangle(760, topY, 148, 16, 0x14283f)
+      .setOrigin(0.5)
+      .setStrokeStyle(2, 0xf2c14e);
+    this.shiftBarFill = this.add.rectangle(760, topY, 140, 12, 0xf2c14e)
       .setOrigin(0.5);
-    this.shiftBarFill = this.add.rectangle(700, topY + 8, 158, 12, 0xffaa44)
-      .setOrigin(0.5);
-    this.shiftTimerText = this.add.text(700, topY + 8, `${this.shiftTimeLeft}с`, {
-      fontSize: '11px', fontFamily: 'Arial', color: '#ffffff', fontStyle: 'bold',
+    this.shiftTimerText = this.add.text(760, topY, 'Смена: ' + this.shiftTimeLeft + 'с', {
+      fontSize: '11px', fontFamily: 'Arial', color: '#1e3a5f', fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    this.statusText = this.add.text(850, topY, '', {
-      fontSize: '12px', fontFamily: 'Arial', color: '#ffffff',
+    this.statusText = this.add.text(450, 54, '', {
+      fontSize: '14px', fontFamily: 'Arial', color: '#2c2416', fontStyle: 'bold',
+      stroke: '#fff8ee', strokeThickness: 4,
     }).setOrigin(0.5, 0);
 
-    this.counterBtn = this.createButton(730, 575, 'Стойка', () => this.showView('counter'));
-    this.warehouseBtn = this.createButton(840, 575, 'Склад', () => this.showView('warehouse'));
+    this.counterBtn = this.createButton(718, 572, 'Стойка', () => this.showView('counter'));
+    this.warehouseBtn = this.createButton(832, 572, 'Склад', () => this.showView('warehouse'));
+
+    [
+      this.hudBar, this.coinIcon, this.starIcon,
+      this.coinsText, this.ratingText, this.timerText, this.dayText,
+      this.shiftBarBg, this.shiftBarFill, this.shiftTimerText, this.statusText,
+      this.counterBtn.bg, this.counterBtn.txt, this.warehouseBtn.bg, this.warehouseBtn.txt,
+    ].forEach((obj) => obj.setDepth(100));
   }
 
   createButton(x, y, label, callback) {
     const bg = this.add.image(x, y, 'btn_normal')
       .setInteractive({ useHandCursor: true });
-    const txt = this.add.text(x, y, label, {
-      fontSize: '14px', fontFamily: 'Arial', color: '#ffffff', fontStyle: 'bold',
+    const txt = this.add.text(x, y - 1, label, {
+      fontSize: '15px', fontFamily: 'Arial', color: '#fff8ee', fontStyle: 'bold',
     }).setOrigin(0.5);
 
     bg.on('pointerover', () => bg.setTexture('btn_hover'));
@@ -992,11 +1369,11 @@ class GameScene extends Phaser.Scene {
     this.shiftTimerText.setText(`Смена: ${this.shiftTimeLeft}с`);
 
     if (ratio > 0.3) {
-      this.shiftBarFill.setFillStyle(0xffaa44);
+      this.shiftBarFill.setFillStyle(0xf2c14e);
     } else if (ratio > 0.1) {
-      this.shiftBarFill.setFillStyle(0xff6b44);
+      this.shiftBarFill.setFillStyle(0xe07a2f);
     } else {
-      this.shiftBarFill.setFillStyle(0xff0000);
+      this.shiftBarFill.setFillStyle(0xd6453d);
     }
 
     if (this.clients.currentClient) {
@@ -1179,42 +1556,43 @@ class ShopScene extends Phaser.Scene {
     this.playerCoins = coins;
     this.playerUpgrades = { ...upgrades };
 
-    // Background
-    this.add.rectangle(450, 300, 900, 600, 0x1a1a2e);
+    this.add.image(450, 300, 'shop_bg');
 
-    // Day results header
-    this.add.text(450, 30, `ДЕНЬ ${day} — ИТОГИ СМЕНЫ`, {
-      fontSize: '28px', fontFamily: 'Arial', color: '#ffd700', fontStyle: 'bold',
+    const back = this.add.image(78, 32, 'back_normal').setInteractive({ useHandCursor: true });
+    const backText = this.add.text(78, 31, 'В меню', {
+      fontSize: '14px', fontFamily: 'Arial', color: '#1e3a5f', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    back.on('pointerover', () => back.setTexture('back_hover'));
+    back.on('pointerout', () => back.setTexture('back_normal'));
+    back.on('pointerdown', () => this.scene.start('BootScene'));
+
+    this.add.text(470, 32, 'ДЕНЬ ' + day + ' — ИТОГИ СМЕНЫ', {
+      fontSize: '24px', fontFamily: 'Arial', color: '#fff8ee', fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    // Results box
-    const boxY = 100;
-    this.add.rectangle(450, boxY, 400, 120, 0x16213e).setStrokeStyle(2, 0x333366);
-
-    this.add.text(450, boxY - 35, `Посылок выдано: ${shiftDelivered}`, {
-      fontSize: '18px', fontFamily: 'Arial', color: '#2ecc71', fontStyle: 'bold',
+    this.add.image(450, 142, 'receipt');
+    this.add.text(450, 118, 'Посылок выдано: ' + shiftDelivered, {
+      fontSize: '18px', fontFamily: 'Arial', color: '#1b7a43', fontStyle: 'bold',
     }).setOrigin(0.5);
-    this.add.text(450, boxY, `Монет заработано: ${shiftCoinsEarned}`, {
-      fontSize: '18px', fontFamily: 'Arial', color: '#ffd700', fontStyle: 'bold',
+    this.add.text(450, 146, 'Монет заработано: ' + shiftCoinsEarned, {
+      fontSize: '18px', fontFamily: 'Arial', color: '#8a5a10', fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    const ratingColor = shiftRatingChange >= 0 ? '#00ff88' : '#ff4444';
+    const ratingColor = shiftRatingChange >= 0 ? '#0e7a3d' : '#c0392b';
     const ratingSign = shiftRatingChange >= 0 ? '+' : '';
-    this.add.text(450, boxY + 35, `Рейтинг: ${ratingSign}${shiftRatingChange}`, {
+    this.add.text(450, 174, 'Рейтинг: ' + ratingSign + shiftRatingChange, {
       fontSize: '18px', fontFamily: 'Arial', color: ratingColor, fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    // Shop title
-    this.add.text(450, 190, 'МАГАЗИН УЛУЧШЕНИЙ', {
-      fontSize: '24px', fontFamily: 'Arial', color: '#e94560', fontStyle: 'bold',
+    this.add.text(450, 214, 'МАГАЗИН УЛУЧШЕНИЙ', {
+      fontSize: '22px', fontFamily: 'Arial', color: '#f6d98a', fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    // Coins display
-    this.coinsText = this.add.text(450, 218, `Монеты: ${this.playerCoins}`, {
-      fontSize: '16px', fontFamily: 'Arial', color: '#ffd700', fontStyle: 'bold',
-    }).setOrigin(0.5);
+    this.add.image(392, 242, 'coin');
+    this.coinsText = this.add.text(408, 242, 'Монеты: ' + this.playerCoins, {
+      fontSize: '16px', fontFamily: 'Arial', color: '#ffe7a3', fontStyle: 'bold',
+    }).setOrigin(0, 0.5);
 
-    // Upgrade items
     const upgradeList = [
       UPGRADES.FASTER_BOOTS,
       UPGRADES.SORT_ASSIST,
@@ -1223,37 +1601,32 @@ class ShopScene extends Phaser.Scene {
     ];
 
     this.upgradeButtons = [];
-    const startY = 260;
-    const itemH = 70;
+    const startY = 286;
+    const itemH = 62;
 
     for (let i = 0; i < upgradeList.length; i++) {
-      const upg = upgradeList[i];
-      const y = startY + i * itemH;
-      this.createUpgradeRow(upg, y);
+      this.createUpgradeRow(upgradeList[i], startY + i * itemH);
     }
 
-    // Next Day button
-    this.createNextDayButton(450, 555, day, rating);
+    this.createNextDayButton(450, 552, day, rating);
   }
 
   createNextDayButton(x, y, day, rating) {
-    const bg = this.add.rectangle(x, y, 200, 45, COLORS.ACCENT)
-      .setInteractive({ useHandCursor: true })
-      .setStrokeStyle(2, 0xc0354d);
-    const txt = this.add.text(x, y, 'СЛЕДУЮЩИЙ ДЕНЬ', {
-      fontSize: '16px', fontFamily: 'Arial', color: '#ffffff', fontStyle: 'bold',
+    const bg = this.add.image(x, y, 'nextday_normal').setInteractive({ useHandCursor: true });
+    const txt = this.add.text(x, y - 1, 'СЛЕДУЮЩИЙ ДЕНЬ', {
+      fontSize: '16px', fontFamily: 'Arial', color: '#fff8ee', fontStyle: 'bold',
     }).setOrigin(0.5);
 
     bg.on('pointerover', () => {
-      bg.setFillStyle(0xff6b6b);
-      this.tweens.add({ targets: [bg, txt], scaleX: 1.05, scaleY: 1.05, duration: 100 });
+      bg.setTexture('nextday_hover');
+      this.tweens.add({ targets: [bg, txt], scaleX: 1.04, scaleY: 1.04, duration: 100 });
     });
     bg.on('pointerout', () => {
-      bg.setFillStyle(COLORS.ACCENT);
+      bg.setTexture('nextday_normal');
       this.tweens.add({ targets: [bg, txt], scaleX: 1, scaleY: 1, duration: 100 });
     });
     bg.on('pointerdown', () => {
-      bg.setFillStyle(0xc0354d);
+      bg.setTexture('nextday_active');
       this.scene.start('GameScene', {
         coins: this.playerCoins,
         rating,
@@ -1269,57 +1642,46 @@ class ShopScene extends Phaser.Scene {
     const cost = maxed ? 0 : getUpgradeCost(upg, currentLevel);
     const canAfford = !maxed && this.playerCoins >= cost;
 
-    // Background
-    const rowBg = this.add.rectangle(450, y, 750, 55, 0x0f3460, 0.8)
-      .setStrokeStyle(1, 0x333366);
+    this.add.image(450, y, 'shop_row');
 
-    // Name + description
-    this.add.text(100, y - 12, upg.name, {
-      fontSize: '16px', fontFamily: 'Arial', color: '#ffffff', fontStyle: 'bold',
+    this.add.text(108, y - 10, upg.name, {
+      fontSize: '16px', fontFamily: 'Arial', color: '#fff8ee', fontStyle: 'bold',
     }).setOrigin(0, 0.5);
-    this.add.text(100, y + 12, upg.desc, {
-      fontSize: '12px', fontFamily: 'Arial', color: '#aaaaaa',
+    this.add.text(108, y + 12, upg.desc, {
+      fontSize: '12px', fontFamily: 'Arial', color: '#e6d3b8',
     }).setOrigin(0, 0.5);
 
-    // Level indicator with filled pips
-    const pipStartX = 500;
+    const pipStartX = 520;
     for (let i = 0; i < upg.maxLevel; i++) {
-      const pipColor = i < currentLevel ? 0xffd700 : 0x444444;
+      const pipColor = i < currentLevel ? 0xf2c14e : 0x6b5344;
       this.add.circle(pipStartX + i * 16, y, 5, pipColor);
     }
-    this.add.text(pipStartX + upg.maxLevel * 16 + 5, y, `${currentLevel}/${upg.maxLevel}`, {
-      fontSize: '12px', fontFamily: 'Arial', color: '#ffd700',
+    this.add.text(pipStartX + upg.maxLevel * 16 + 6, y, currentLevel + '/' + upg.maxLevel, {
+      fontSize: '12px', fontFamily: 'Arial', color: '#f2c14e',
     }).setOrigin(0, 0.5);
 
-    // Buy button
     if (maxed) {
-      const maxBg = this.add.rectangle(700, y, 110, 35, 0x333333)
-        .setStrokeStyle(1, 0x444444);
-      this.add.text(700, y, 'МАКС', {
-        fontSize: '14px', fontFamily: 'Arial', color: '#888888', fontStyle: 'bold',
+      this.add.image(748, y, 'buy_no');
+      this.add.text(748, y, 'МАКС', {
+        fontSize: '14px', fontFamily: 'Arial', color: '#efe6da', fontStyle: 'bold',
       }).setOrigin(0.5);
     } else {
-      const btnColor = canAfford ? 0x2ecc71 : 0x555555;
-      const btnBorder = canAfford ? 0x27ae60 : 0x444444;
-      const btn = this.add.rectangle(700, y, 110, 35, btnColor)
-        .setStrokeStyle(1, btnBorder);
-
-      const btnText = this.add.text(700, y, `${cost} монет`, {
-        fontSize: '13px', fontFamily: 'Arial', color: '#ffffff', fontStyle: 'bold',
+      const btn = this.add.image(748, y, canAfford ? 'buy_ok' : 'buy_no');
+      const btnText = this.add.text(748, y, cost + ' монет', {
+        fontSize: '13px', fontFamily: 'Arial', color: '#fff8ee', fontStyle: 'bold',
       }).setOrigin(0.5);
 
       if (canAfford) {
         btn.setInteractive({ useHandCursor: true });
         btn.on('pointerover', () => {
-          btn.setFillStyle(0x27ae60);
-          this.tweens.add({ targets: [btn, btnText], scaleX: 1.08, scaleY: 1.08, duration: 80 });
+          btn.setTexture('buy_hover');
+          this.tweens.add({ targets: [btn, btnText], scaleX: 1.06, scaleY: 1.06, duration: 80 });
         });
         btn.on('pointerout', () => {
-          btn.setFillStyle(0x2ecc71);
+          btn.setTexture('buy_ok');
           this.tweens.add({ targets: [btn, btnText], scaleX: 1, scaleY: 1, duration: 80 });
         });
         btn.on('pointerdown', () => {
-          btn.setFillStyle(0x1b8a45);
           this.playerCoins -= cost;
           this.playerUpgrades[upg.id] = currentLevel + 1;
           this.scene.restart({
@@ -1329,9 +1691,8 @@ class ShopScene extends Phaser.Scene {
           });
         });
       } else {
-        // Disabled state - grey tint
-        btn.setAlpha(0.6);
-        btnText.setAlpha(0.6);
+        btn.setAlpha(0.7);
+        btnText.setAlpha(0.7);
       }
     }
   }
@@ -1343,7 +1704,7 @@ const config = {
   width: 900,
   height: 600,
   parent: 'game-container',
-  backgroundColor: '#f0e6d3',
+  backgroundColor: '#f7ead6',
   scene: [PreloadScene, BootScene, GameScene, ShopScene],
   scale: {
     mode: Phaser.Scale.FIT,
