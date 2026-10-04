@@ -183,32 +183,48 @@
         for (var x = 0; x < w; x += s) {
           var alt = ((x / s + y / s) % 2) === 0;
           ctx.fillStyle = alt ? c1 : c2;
-          ctx.fillRect(x + 1, y + 1, s - 2, s - 2);
+          ctx.fillRect(x, y, s, s);
         }
       }
     }, 512, 512);
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(4, 4);
+    tex.repeat.set(1, 1);
     return tex;
   }
 
-  function addFloor(x, z, sx, sz, texture) {
-    var floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(sx, sz),
-      mat(0xffffff, { map: texture, roughness: 0.95 })
-    );
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.set(x, 0, z);
-    floor.receiveShadow = true;
-    scene.add(floor);
-  }
-
-  function addCeiling(x, z, sx, sz) {
-    var ceil = new THREE.Mesh(new THREE.PlaneGeometry(sx, sz), ceilMat);
-    ceil.rotation.x = Math.PI / 2;
-    ceil.position.set(x, 3.18, z);
-    scene.add(ceil);
+  // One mesh, rects meet at edges and never share area. Coplanar overlaps were the white floor stripes.
+  function addSurface(rects, material, y, faceDown) {
+    var positions = [];
+    var uvs = [];
+    var normals = [];
+    var indices = [];
+    var v = 0;
+    var ny = faceDown ? -1 : 1;
+    for (var i = 0; i < rects.length; i++) {
+      var r = rects[i];
+      var x0 = r.minX;
+      var x1 = r.maxX;
+      var z0 = r.minZ;
+      var z1 = r.maxZ;
+      positions.push(x0, y, z0, x1, y, z0, x1, y, z1, x0, y, z1);
+      var tile = 3.2;
+      uvs.push(x0 / tile, z0 / tile, x1 / tile, z0 / tile, x1 / tile, z1 / tile, x0 / tile, z1 / tile);
+      normals.push(0, ny, 0, 0, ny, 0, 0, ny, 0, 0, ny, 0);
+      if (faceDown) indices.push(v, v + 1, v + 2, v, v + 2, v + 3);
+      else indices.push(v, v + 2, v + 1, v, v + 3, v + 2);
+      v += 4;
+    }
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+    geo.setIndex(indices);
+    var mesh = new THREE.Mesh(geo, material);
+    mesh.castShadow = false;
+    mesh.receiveShadow = !faceDown;
+    scene.add(mesh);
+    return mesh;
   }
 
   function wallX(x, z, lenZ) {
@@ -229,20 +245,25 @@
   function buildRoom() {
     var hallFloor = floorTexture("#d9d0c2", "#cfc4b4", "#c9bfb0");
     var storeFloor = floorTexture("#7d7268", "#6e655c", "#756b62");
-    hallFloor.repeat.set(3, 3);
-    storeFloor.repeat.set(6, 4);
 
-    addFloor(0, -4.15, 13.0, 5.7, storeFloor);
-    addFloor(-4.55, -0.2, 1.7, 2.3, storeFloor);
-    addFloor(-1.3, 1.02, 7.8, 0.55, hallFloor);
-    addFloor(0, 3.9, 6.4, 3.2, hallFloor);
-    addFloor(0, 6.4, 1.7, 1.3, hallFloor);
-
-    addCeiling(0, -4.15, 13.2, 5.9);
-    addCeiling(-4.55, -0.15, 1.9, 2.5);
-    addCeiling(-1.3, 1.02, 8.0, 0.7);
-    addCeiling(0, 3.85, 6.6, 3.6);
-    addCeiling(0, 6.4, 2.2, 1.5);
+    var storeRects = [
+      { minX: -6.55, maxX: 6.55, minZ: -6.95, maxZ: -1.48 },
+      { minX: -5.40, maxX: -3.80, minZ: -1.48, maxZ: 0.40 }
+    ];
+    var hallRects = [
+      { minX: -6.45, maxX: 3.40, minZ: 0.40, maxZ: 1.52 },
+      { minX: -3.22, maxX: 3.22, minZ: 1.52, maxZ: 5.50 },
+      { minX: -0.98, maxX: 0.98, minZ: 5.50, maxZ: 7.05 }
+    ];
+    addSurface(storeRects, mat(0xffffff, { map: storeFloor, roughness: 0.95 }), 0, false);
+    addSurface(hallRects, mat(0xffffff, {
+      map: hallFloor,
+      roughness: 0.95,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1
+    }), 0, false);
+    addSurface(storeRects.concat(hallRects), ceilMat, 3.18, true);
 
     function tall(box, material) {
       var sx = box.maxX - box.minX;
@@ -275,13 +296,13 @@
     ];
     for (var i = 0; i < shell.length; i++) tall(shell[i], wallWarm);
 
-    blocks.push({ minX: -1.48, maxX: 2.28, minZ: 1.52, maxZ: 2.15 });
-    addBox(0.4, 0.52, 1.84, 3.6, 1.04, 0.58, counterMat);
-    addBox(0.4, 1.06, 1.84, 3.76, 0.08, 0.7, counterTop);
-    addBox(-1.48, 1.6, 1.84, 0.16, 3.2, 0.7, wallWarm, { cast: false });
-    addBox(2.28, 1.6, 1.84, 0.16, 3.2, 0.7, wallWarm, { cast: false });
-    addBox(0.4, 2.45, 1.84, 3.76, 0.42, 0.7, wallWarm, { cast: false });
-    addBox(0.4, 0.02, 2.35, 2.6, 0.025, 0.4, rubber, { cast: false });
+    blocks.push({ minX: -1.48, maxX: 2.28, minZ: 1.52, maxZ: 1.92 });
+    addBox(0.4, 0.52, 1.64, 3.6, 1.04, 0.36, counterMat);
+    addBox(0.4, 1.06, 1.66, 3.76, 0.08, 0.48, counterTop);
+    addBox(-1.48, 1.6, 1.62, 0.16, 3.2, 0.20, wallWarm, { cast: false });
+    addBox(2.28, 1.6, 1.62, 0.16, 3.2, 0.20, wallWarm, { cast: false });
+    addBox(0.4, 2.52, 1.62, 3.76, 0.48, 0.20, wallWarm, { cast: false });
+    addBox(0.4, 0.012, 3.15, 2.1, 0.016, 0.85, rubber, { cast: false });
     addBox(-1.05, 1.12, 1.55, 0.12, 0.07, 0.12, mat(0xd4a017, { metalness: 0.6, roughness: 0.3 }));
 
     [-2.2, 2.1].forEach(function (x) {
@@ -314,7 +335,7 @@
       ctx.fillText("пункт выдачи заказов", w / 2, h / 2 + 58);
     }, 1024, 256);
     var signMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.05, 0.52), mat(0xffffff, { map: sign, roughness: 0.6 }));
-    signMesh.position.set(0.4, 2.12, 2.2);
+    signMesh.position.set(0.4, 2.08, 1.92);
     scene.add(signMesh);
 
     var storeSign = paint(function (ctx, w, h) {
@@ -794,7 +815,7 @@
       deadline: 0,
       x: 0.05,
       z: 6.55,
-      spot: { x: spotX, z: 2.62 },
+      spot: { x: spotX, z: 3.2 },
       door: { x: 0.05, z: 6.55 }
     };
     var colors = [0x2f6fad, 0xb05a28, 0x2f7d4a, 0x6d4c93, 0xa33b32];
@@ -1172,7 +1193,7 @@
       }
     } else {
       menuT += dt;
-      camera.position.set(Math.sin(menuT * 0.22) * 0.22, 1.7, 4.15);
+      camera.position.set(Math.sin(menuT * 0.22) * 0.22, 1.7, 4.72);
       camera.lookAt(0.35, 1.2, 1.9);
       if (doorPivot) {
         var swing = (Math.sin(menuT * 0.7) > 0.55) ? 1.05 : 0;
@@ -1180,7 +1201,7 @@
       }
       if (!customer) {
         customerGroup.visible = true;
-        customerGroup.position.set(0.05, 0, 2.62);
+        customerGroup.position.set(0.05, 0, 3.2);
         customerGroup.rotation.y = 0;
       }
     }
@@ -1195,7 +1216,7 @@
   stock(13);
   if (!customer) {
     customerGroup.visible = true;
-    customerGroup.position.set(0.05, 0, 2.62);
+    customerGroup.position.set(0.05, 0, 3.2);
     customerSprite.visible = false;
   }
   requestAnimationFrame(tick);
