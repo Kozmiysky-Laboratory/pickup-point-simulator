@@ -254,7 +254,8 @@
       { minX: -6.45, maxX: 3.40, minZ: 0.40, maxZ: 1.52 },
       { minX: -6.45, maxX: -3.22, minZ: 1.52, maxZ: 5.50 },
       { minX: -3.22, maxX: 3.22, minZ: 1.52, maxZ: 5.50 },
-      { minX: -0.98, maxX: 0.98, minZ: 5.50, maxZ: 7.05 }
+      { minX: -0.98, maxX: 0.98, minZ: 5.50, maxZ: 7.05 },
+      { minX: -3.80, maxX: 3.40, minZ: -1.48, maxZ: 0.40 }
     ];
     addSurface(storeRects, mat(0xffffff, { map: storeFloor, roughness: 0.95 }), 0, false);
     addSurface(hallRects, mat(0xffffff, {
@@ -284,7 +285,7 @@
       { minX: -6.5, maxX: -3.22, minZ: 1.52, maxZ: 1.72 },
       { minX: 3.22, maxX: 3.5, minZ: 1.52, maxZ: 1.72 },
       { minX: -6.7, maxX: -5.35, minZ: 0.3, maxZ: 0.5 },
-      { minX: -3.9, maxX: 3.55, minZ: 0.3, maxZ: 0.5 },
+      { minX: 3.40, maxX: 3.56, minZ: -1.48, maxZ: 1.52 },
       { minX: -5.55, maxX: -5.35, minZ: -1.45, maxZ: 0.5 },
       { minX: -3.9, maxX: -3.7, minZ: -0.35, maxZ: 0.5 },
       { minX: -4.55, maxX: -3.7, minZ: -1.25, maxZ: -1.05 },
