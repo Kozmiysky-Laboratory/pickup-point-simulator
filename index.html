@@ -1,38 +1,177 @@
 <!doctype html>
 <html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <title>Симулятор ПВЗ — Pickup Point Simulator</title>
-    <style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body {
-        width: 100%; height: 100%;
-        overflow: hidden;
-        background: #1a1a2e;
-        touch-action: none;
-        -webkit-tap-highlight-color: transparent;
-      }
-      body {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      }
-      #game-container {
-        width: 100%;
-        height: 100%;
-      }
-      #game-container canvas {
-        display: block;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="game-container"></div>
-    <script src="vendor/phaser.min.js"></script>
-    <script src="game.js"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Симулятор ПВЗ — Pickup Point Simulator</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; height: 100%; overflow: hidden;
+      background: #14181f;
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+    #view { display: block; width: 100%; height: 100%; cursor: default; }
+    #crosshair {
+      position: fixed; left: 50%; top: 50%;
+      width: 14px; height: 14px; margin: -7px 0 0 -7px;
+      pointer-events: none; display: none; z-index: 3;
+    }
+    #crosshair::before, #crosshair::after {
+      content: ""; position: absolute; background: #fff8ee;
+      box-shadow: 0 0 0 1px rgba(0,0,0,.55);
+    }
+    #crosshair::before { left: 6px; top: 0; width: 2px; height: 14px; }
+    #crosshair::after { left: 0; top: 6px; width: 14px; height: 2px; }
+    #hud {
+      position: fixed; left: 0; right: 0; top: 0;
+      display: none; z-index: 4; pointer-events: none;
+      padding: 14px 16px 0;
+      color: #fff8ee;
+    }
+    .hud-row { display: flex; gap: 10px; align-items: stretch; }
+    .pill {
+      background: rgba(20, 28, 38, .78);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 12px;
+      padding: 8px 12px;
+      min-width: 118px;
+    }
+    .pill b { display: block; font-size: 12px; font-weight: 600; letter-spacing: .04em; color: #d7c4a4; }
+    .pill span { font-size: 20px; font-weight: 700; }
+    .request {
+      margin-top: 10px;
+      background: rgba(247, 241, 230, .94);
+      color: #1c2430;
+      border-radius: 14px;
+      padding: 10px 14px 12px;
+      max-width: 460px;
+    }
+    .request .who { font-size: 13px; color: #5c5144; font-weight: 700; }
+    .request .article { font-size: 34px; font-weight: 800; letter-spacing: .04em; line-height: 1.1; }
+    .bar {
+      margin-top: 8px; height: 8px; border-radius: 99px;
+      background: #d9d0c3; overflow: hidden;
+    }
+    .bar i {
+      display: block; height: 100%; width: 100%;
+      background: #2f7d4a; border-radius: 99px;
+    }
+    #toast {
+      position: fixed; left: 50%; bottom: 18%;
+      transform: translateX(-50%);
+      background: rgba(20, 28, 38, .88);
+      color: #fff8ee;
+      padding: 10px 16px; border-radius: 999px;
+      font-weight: 700; display: none; z-index: 5;
+      pointer-events: none;
+    }
+    #hint {
+      position: fixed; left: 50%; bottom: 28px;
+      transform: translateX(-50%);
+      color: #fff8ee; background: rgba(20,28,38,.72);
+      padding: 8px 14px; border-radius: 999px;
+      display: none; z-index: 5; pointer-events: none;
+      font-size: 14px;
+    }
+    .overlay {
+      position: fixed; inset: 0; z-index: 6;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(10, 14, 20, .38);
+      padding: 20px;
+    }
+    .overlay.hidden { display: none; }
+    .card {
+      width: min(460px, 100%);
+      background: #f6f0e6;
+      color: #1c2430;
+      border-radius: 18px;
+      padding: 26px 26px 20px;
+      box-shadow: 0 22px 60px rgba(0,0,0,.38);
+    }
+    .eyebrow {
+      font-size: 12px; font-weight: 800; letter-spacing: .14em;
+      color: #8a5a2a; margin: 0 0 6px;
+    }
+    h1 { margin: 0 0 8px; font-size: 34px; line-height: 1.05; }
+    .lead { margin: 0 0 18px; color: #4d453c; line-height: 1.4; }
+    button {
+      width: 100%; border: 0; border-radius: 12px;
+      padding: 13px 14px; margin-top: 8px;
+      font: 700 17px "Segoe UI", Arial, sans-serif;
+      background: #1f4b78; color: #fff8ee; cursor: pointer;
+    }
+    button:hover { background: #17395c; }
+    button.ghost {
+      background: transparent; color: #1f4b78;
+      border: 2px solid #1f4b78;
+    }
+    button.ghost:hover { background: rgba(31,75,120,.08); }
+    .help p { margin: 0 0 10px; line-height: 1.45; }
+    .help ul { margin: 0 0 12px; padding-left: 18px; }
+    .help li { margin: 0 0 6px; line-height: 1.4; }
+    .results p { margin: 0 0 6px; font-size: 18px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <div id="crosshair"></div>
+  <div id="hud">
+    <div class="hud-row">
+      <div class="pill"><b>МОНЕТЫ</b><span id="hud-coins">0</span></div>
+      <div class="pill"><b>РЕЙТИНГ</b><span id="hud-rating">0</span></div>
+      <div class="pill"><b>СМЕНА</b><span id="hud-time">1:30</span></div>
+    </div>
+    <div class="request">
+      <div class="who" id="hud-who">Стойка выдачи</div>
+      <div class="article" id="hud-article">—</div>
+      <div class="bar"><i id="hud-bar"></i></div>
+    </div>
+  </div>
+  <div id="toast"></div>
+  <div id="hint">Кликните по экрану, чтобы смотреть мышью</div>
+
+  <div id="menu" class="overlay">
+    <div class="card">
+      <p class="eyebrow">ПУНКТ ВЫДАЧИ</p>
+      <h1>Симулятор ПВЗ</h1>
+      <p class="lead">Смена 90 секунд. Клиент называет артикул — найдите эту посылку на стеллаже и выдайте её.</p>
+      <button id="btn-play" type="button">Играть</button>
+      <button id="btn-help" class="ghost" type="button">Как играть</button>
+    </div>
+  </div>
+
+  <div id="help" class="overlay hidden">
+    <div class="card help">
+      <p class="eyebrow">УПРАВЛЕНИЕ</p>
+      <h1>Как играть</h1>
+      <ul>
+        <li>WASD — ходить, мышь — осматриваться.</li>
+        <li>Клиент на стойке называет артикул. Он же написан крупно сверху.</li>
+        <li>Полки пронумерованы. На коробке написан артикул. В ячейке может лежать две посылки.</li>
+        <li>Наведите прицел и кликните по нужной коробке — она сразу выдаётся.</li>
+        <li>Верно: +10 монет и +1 рейтинг. Чужая посылка: −5 монет, клиент уходит. Не успели за 20 секунд: −1 рейтинг.</li>
+        <li>Esc отпускает мышь. Кликните по экрану, чтобы снова её захватить.</li>
+      </ul>
+      <button id="btn-help-back" class="ghost" type="button">Назад</button>
+    </div>
+  </div>
+
+  <div id="results" class="overlay hidden">
+    <div class="card results">
+      <p class="eyebrow">КОНЕЦ СМЕНЫ</p>
+      <h1>Смена окончена</h1>
+      <p id="res-served">Выдано верно: 0</p>
+      <p id="res-wrong">Ошибок: 0</p>
+      <p id="res-late">Не успели: 0</p>
+      <p id="res-coins">Монеты: 0</p>
+      <p id="res-rating">Рейтинг: 0</p>
+      <button id="btn-menu" type="button">В меню</button>
+    </div>
+  </div>
+
+  <script src="vendor/three.min.js"></script>
+  <script src="game.js"></script>
+</body>
 </html>
