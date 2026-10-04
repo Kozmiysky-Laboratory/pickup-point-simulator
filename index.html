@@ -50,6 +50,7 @@
     }
     .request .who { font-size: 13px; color: #5c5144; font-weight: 700; }
     .request .article { font-size: 34px; font-weight: 800; letter-spacing: .04em; line-height: 1.1; }
+    .request .carry { margin-top: 6px; font-size: 15px; font-weight: 800; color: #5c5144; }
     .bar {
       margin-top: 8px; height: 8px; border-radius: 99px;
       background: #d9d0c3; overflow: hidden;
@@ -108,6 +109,15 @@
       border: 2px solid #1f4b78;
     }
     button.ghost:hover { background: rgba(31,75,120,.08); }
+    .sens { margin: 4px 0 10px; }
+    .sens-name {
+      display: flex; justify-content: space-between; align-items: baseline;
+      font-weight: 800; font-size: 15px;
+    }
+    .sens-name b { color: #1f4b78; font-size: 18px; }
+    .sens input[type=range] {
+      width: 100%; margin: 8px 0 0; accent-color: #1f4b78; cursor: pointer;
+    }
     .help p { margin: 0 0 10px; line-height: 1.45; }
     .help ul { margin: 0 0 12px; padding-left: 18px; }
     .help li { margin: 0 0 6px; line-height: 1.4; }
@@ -126,6 +136,7 @@
     <div class="request">
       <div class="who" id="hud-who">Стойка выдачи</div>
       <div class="article" id="hud-article">—</div>
+      <div class="carry" id="hud-carry">В руках: пусто</div>
       <div class="bar"><i id="hud-bar"></i></div>
     </div>
   </div>
@@ -136,7 +147,11 @@
     <div class="card">
       <p class="eyebrow">ПУНКТ ВЫДАЧИ</p>
       <h1>Симулятор ПВЗ</h1>
-      <p class="lead">Смена 90 секунд. Клиент называет артикул — найдите эту посылку на стеллаже и выдайте её.</p>
+      <p class="lead">Смена 90 секунд. Клиент заходит в зал и называет артикул. Склад за стеной: возьмите посылку и отнесите её к стойке.</p>
+      <div class="sens">
+        <div class="sens-name">Чувствительность мыши <b id="sens-menu-val">5</b></div>
+        <input id="sens-menu" type="range" min="1" max="10" step="1" value="5">
+      </div>
       <button id="btn-play" type="button">Играть</button>
       <button id="btn-help" class="ghost" type="button">Как играть</button>
     </div>
@@ -147,14 +162,29 @@
       <p class="eyebrow">УПРАВЛЕНИЕ</p>
       <h1>Как играть</h1>
       <ul>
-        <li>WASD — ходить, мышь — осматриваться.</li>
-        <li>Клиент на стойке называет артикул. Он же написан крупно сверху.</li>
-        <li>Полки пронумерованы. На коробке написан артикул. В ячейке может лежать две посылки.</li>
-        <li>Наведите прицел и кликните по нужной коробке — она сразу выдаётся.</li>
-        <li>Верно: +10 монет и +1 рейтинг. Чужая посылка: −5 монет, клиент уходит. Не успели за 20 секунд: −1 рейтинг.</li>
-        <li>Esc отпускает мышь. Кликните по экрану, чтобы снова её захватить.</li>
+        <li>WASD — ходить, мышь — осматриваться. Esc — пауза.</li>
+        <li>Клиент заходит через дверь зала и подходит к стойке. Артикул написан сверху.</li>
+        <li>Склад за стеной, клиент его не видит. Проход на склад — слева от стойки.</li>
+        <li>Полки пронумерованы. Клик по коробке берёт её в руки, заказ ещё не закрыт.</li>
+        <li>Вернитесь к стойке и кликните по клиенту, чтобы отдать посылку. Правая кнопка возвращает её на полку.</li>
+        <li>Верно: +10 монет и +1 рейтинг. Чужая посылка: −5 монет. Не успели за 20 секунд: −1 рейтинг.</li>
+        <li>Чувствительность мыши настраивается в меню и в паузе.</li>
       </ul>
       <button id="btn-help-back" class="ghost" type="button">Назад</button>
+    </div>
+  </div>
+
+  <div id="pause" class="overlay hidden">
+    <div class="card">
+      <p class="eyebrow">СМЕНА</p>
+      <h1>Пауза</h1>
+      <p class="lead">Мышь отпущена. Смена стоит на месте, пока вы не продолжите.</p>
+      <div class="sens">
+        <div class="sens-name">Чувствительность мыши <b id="sens-pause-val">5</b></div>
+        <input id="sens-pause" type="range" min="1" max="10" step="1" value="5">
+      </div>
+      <button id="btn-resume" type="button">Продолжить</button>
+      <button id="btn-pause-menu" class="ghost" type="button">В меню</button>
     </div>
   </div>
 
