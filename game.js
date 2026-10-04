@@ -83,7 +83,7 @@
   var mode = "menu";
   var yaw = Math.PI;
   var pitch = 0;
-  var player = { x: 0.15, z: 1.02 };
+  var player = { x: 0.2, z: 0.9 };
   var keys = {};
   var shiftLeft = SHIFT_SEC;
   var customer = null;
@@ -227,102 +227,99 @@
     return mesh;
   }
 
-  function wallX(x, z, lenZ) {
-    return addBox(x, 1.6, z, 0.16, 3.2, lenZ, wallMat, { cast: false });
-  }
+  // Two clean rooms sharing one divider wall. Floors meet at z = -1, never overlap.
+  // Warehouse: x[-6.4, 6.4] × z[-7.0, -1.0]. Hall: x[-6.4, 6.4] × z[-1.0, 6.5].
+  var WALL_T = 0.18;
+  var ROOM_Y = 1.6;
+  var ROOM_H = 3.2;
+  var DIV_Z = -1.0;
+  var STAFF_DOOR_MIN_X = -5.05;
+  var STAFF_DOOR_MAX_X = -3.55;
+  var CUST_DOOR_MIN_X = -0.75;
+  var CUST_DOOR_MAX_X = 0.75;
+  var BUILD_MIN_X = -6.49;
+  var BUILD_MAX_X = 6.49;
+  var BUILD_MIN_Z = -7.09;
+  var BUILD_MAX_Z = 6.59;
 
-  function wallZ(x, z, lenX, material) {
-    return addBox(x, 1.6, z, lenX, 3.2, 0.16, material || wallMat, { cast: false });
+  function addWallSeg(minX, maxX, minZ, maxZ, material) {
+    var sx = maxX - minX;
+    var sz = maxZ - minZ;
+    addBox((minX + maxX) / 2, ROOM_Y, (minZ + maxZ) / 2, Math.max(sx, 0.02), ROOM_H, Math.max(sz, 0.02), material || wallWarm, { cast: false });
+    blocks.push({ minX: minX, maxX: maxX, minZ: minZ, maxZ: maxZ });
   }
 
   function inPlayable(x, z) {
-    if (x >= -6.45 && x <= 6.45 && z >= -6.85 && z <= -1.2) return true;
-    if (x >= -5.25 && x <= -3.8 && z >= -1.35 && z <= 0.95) return true;
-    if (x >= -5.25 && x <= 2.45 && z >= 0.86 && z <= 1.18) return true;
-    return false;
+    // Whole interior footprint; walls live only in blocks[].
+    if (x < BUILD_MIN_X + WALL_T / 2 + 0.02 || x > BUILD_MAX_X - WALL_T / 2 - 0.02) return false;
+    if (z < BUILD_MIN_Z + WALL_T / 2 + 0.02 || z > BUILD_MAX_Z - WALL_T / 2 - 0.02) return false;
+    return true;
   }
 
   function buildRoom() {
+    blocks.length = 0;
+
     var hallFloor = floorTexture("#d9d0c2", "#cfc4b4", "#c9bfb0");
     var storeFloor = floorTexture("#7d7268", "#6e655c", "#756b62");
 
-    var storeRects = [
-      { minX: -6.55, maxX: 6.55, minZ: -6.95, maxZ: -1.48 },
-      { minX: -5.40, maxX: -3.80, minZ: -1.48, maxZ: 0.40 }
-    ];
-    var hallRects = [
-      { minX: -6.45, maxX: 3.40, minZ: 0.40, maxZ: 1.52 },
-      { minX: -6.45, maxX: -3.22, minZ: 1.52, maxZ: 5.50 },
-      { minX: -3.22, maxX: 3.22, minZ: 1.52, maxZ: 5.50 },
-      { minX: -0.98, maxX: 0.98, minZ: 5.50, maxZ: 7.05 },
-      { minX: -3.80, maxX: 3.40, minZ: -1.48, maxZ: 0.40 }
-    ];
-    addSurface(storeRects, mat(0xffffff, { map: storeFloor, roughness: 0.95 }), 0, false);
-    addSurface(hallRects, mat(0xffffff, {
-      map: hallFloor,
-      roughness: 0.95,
-      polygonOffset: true,
-      polygonOffsetFactor: -1,
-      polygonOffsetUnits: -1
-    }), 0, false);
-    addSurface(storeRects.concat(hallRects), ceilMat, 3.18, true);
+    // One rectangle per room. Edges touch at z = -1.0, no shared area.
+    addSurface(
+      [{ minX: -6.4, maxX: 6.4, minZ: -7.0, maxZ: DIV_Z }],
+      mat(0xffffff, { map: storeFloor, roughness: 0.95 }),
+      0,
+      false
+    );
+    addSurface(
+      [{ minX: -6.4, maxX: 6.4, minZ: DIV_Z, maxZ: 6.5 }],
+      mat(0xffffff, { map: hallFloor, roughness: 0.95 }),
+      0,
+      false
+    );
+    addSurface(
+      [{ minX: -6.4, maxX: 6.4, minZ: -7.0, maxZ: 6.5 }],
+      ceilMat,
+      3.18,
+      true
+    );
 
-    function tall(box, material) {
-      var sx = box.maxX - box.minX;
-      var sz = box.maxZ - box.minZ;
-      addBox((box.minX + box.maxX) / 2, 1.6, (box.minZ + box.maxZ) / 2, Math.max(sx, 0.02), 3.2, Math.max(sz, 0.02), material || wallMat, { cast: false });
-      blocks.push(box);
-    }
+    var half = WALL_T / 2;
 
-    var shell = [
-      { minX: 3.22, maxX: 3.42, minZ: 1.5, maxZ: 5.65 },
-      { minX: -6.7, maxX: -6.5, minZ: 1.52, maxZ: 5.7 },
-      { minX: -6.7, maxX: -0.72, minZ: 5.5, maxZ: 5.7 },
-      { minX: 0.72, maxX: 3.42, minZ: 5.5, maxZ: 5.7 },
-      { minX: -1.18, maxX: -0.98, minZ: 5.65, maxZ: 7.2 },
-      { minX: 0.98, maxX: 1.18, minZ: 5.65, maxZ: 7.2 },
-      { minX: -1.18, maxX: 1.18, minZ: 7.05, maxZ: 7.25 },
-      { minX: -6.5, maxX: -3.22, minZ: 1.52, maxZ: 1.72 },
-      { minX: 3.22, maxX: 3.5, minZ: 1.52, maxZ: 1.72 },
-      { minX: -6.7, maxX: -5.35, minZ: 0.3, maxZ: 0.5 },
-      { minX: 3.40, maxX: 3.56, minZ: -1.48, maxZ: 1.52 },
-      { minX: -5.55, maxX: -5.35, minZ: -1.45, maxZ: 0.5 },
-      { minX: -3.9, maxX: -3.7, minZ: -0.35, maxZ: 0.5 },
-      { minX: -4.55, maxX: -3.7, minZ: -1.25, maxZ: -1.05 },
-      { minX: -4.6, maxX: -4.4, minZ: -2.35, maxZ: -1.05 },
-      { minX: -6.75, maxX: -5.45, minZ: -1.48, maxZ: -1.28 },
-      { minX: -4.22, maxX: 6.75, minZ: -1.48, maxZ: -1.28 },
-      { minX: -6.75, maxX: 6.75, minZ: -7.15, maxZ: -6.95 },
-      { minX: -6.75, maxX: -6.55, minZ: -7.15, maxZ: -1.28 },
-      { minX: 6.55, maxX: 6.75, minZ: -7.15, maxZ: -1.28 }
-    ];
-    for (var i = 0; i < shell.length; i++) tall(shell[i], wallWarm);
+    // Outer shell
+    addWallSeg(BUILD_MIN_X - half, BUILD_MAX_X + half, BUILD_MIN_Z - half, BUILD_MIN_Z + half); // warehouse back
+    addWallSeg(BUILD_MIN_X - half, BUILD_MIN_X + half, BUILD_MIN_Z - half, BUILD_MAX_Z + half); // west
+    addWallSeg(BUILD_MAX_X - half, BUILD_MAX_X + half, BUILD_MIN_Z - half, BUILD_MAX_Z + half); // east
+    // Front wall with customer door gap
+    addWallSeg(BUILD_MIN_X - half, CUST_DOOR_MIN_X, BUILD_MAX_Z - half, BUILD_MAX_Z + half);
+    addWallSeg(CUST_DOOR_MAX_X, BUILD_MAX_X + half, BUILD_MAX_Z - half, BUILD_MAX_Z + half);
 
-    blocks.push({ minX: -1.48, maxX: 2.28, minZ: 1.52, maxZ: 1.92 });
-    addBox(0.4, 0.52, 1.64, 3.6, 1.04, 0.36, counterMat);
-    addBox(0.4, 1.06, 1.66, 3.76, 0.08, 0.48, counterTop);
-    addBox(-1.48, 1.6, 1.62, 0.16, 3.2, 0.20, wallWarm, { cast: false });
-    addBox(2.28, 1.6, 1.62, 0.16, 3.2, 0.20, wallWarm, { cast: false });
-    addBox(0.4, 2.52, 1.62, 3.76, 0.48, 0.20, wallWarm, { cast: false });
-    addBox(0.4, 0.012, 3.15, 2.1, 0.016, 0.85, rubber, { cast: false });
-    addBox(-1.05, 1.12, 1.55, 0.12, 0.07, 0.12, mat(0xd4a017, { metalness: 0.6, roughness: 0.3 }));
+    // Divider: warehouse hidden from the hall. Staff doorway on the left only.
+    addWallSeg(BUILD_MIN_X - half, STAFF_DOOR_MIN_X, DIV_Z - half, DIV_Z + half);
+    addWallSeg(STAFF_DOOR_MAX_X, BUILD_MAX_X + half, DIV_Z - half, DIV_Z + half);
 
-    [-2.2, 2.1].forEach(function (x) {
-      addBox(x, 3.12, -4.0, 1.5, 0.06, 0.34, mat(0xfff4d2, {
-        emissive: 0xfff1c9,
-        emissiveIntensity: 0.62,
-        roughness: 0.4
+    // Counter faces the customer (+Z). Staff stands on the warehouse side of it.
+    var counterX = 0.3;
+    var counterZ = 1.55;
+    blocks.push({ minX: -1.5, maxX: 2.1, minZ: 1.35, maxZ: 1.85 });
+    addBox(counterX, 0.52, counterZ, 3.6, 1.04, 0.4, counterMat);
+    addBox(counterX, 1.06, counterZ + 0.02, 3.76, 0.08, 0.52, counterTop);
+    // Side posts + lintel so the counter sits in a solid pass-through frame (no extra room walls)
+    addBox(-1.5, ROOM_Y, counterZ, 0.14, ROOM_H, 0.22, wallWarm, { cast: false });
+    addBox(2.1, ROOM_Y, counterZ, 0.14, ROOM_H, 0.22, wallWarm, { cast: false });
+    addBox(counterX, 2.55, counterZ, 3.74, 0.5, 0.22, wallWarm, { cast: false });
+    addBox(counterX, 0.012, 3.35, 2.2, 0.016, 1.1, rubber, { cast: false });
+    addBox(-1.1, 1.12, 1.45, 0.12, 0.07, 0.12, mat(0xd4a017, { metalness: 0.6, roughness: 0.3 }));
+
+    // Lights
+    [-3.2, 3.2].forEach(function (x) {
+      addBox(x, 3.12, -4.0, 1.6, 0.06, 0.34, mat(0xfff4d2, {
+        emissive: 0xfff1c9, emissiveIntensity: 0.62, roughness: 0.4
       }), { cast: false, receive: false });
     });
-    addBox(-4.7, 3.12, -0.2, 0.7, 0.05, 0.7, mat(0xfff4d2, {
-      emissive: 0xfff1c9,
-      emissiveIntensity: 0.5,
-      roughness: 0.4
+    addBox(0, 3.12, 3.4, 2.0, 0.06, 0.34, mat(0xfff4d2, {
+      emissive: 0xfff1c9, emissiveIntensity: 0.7, roughness: 0.4
     }), { cast: false, receive: false });
-    addBox(0.2, 3.12, 3.6, 1.7, 0.06, 0.34, mat(0xfff4d2, {
-      emissive: 0xfff1c9,
-      emissiveIntensity: 0.7,
-      roughness: 0.4
+    addBox(-4.3, 3.12, -0.2, 0.7, 0.05, 0.7, mat(0xfff4d2, {
+      emissive: 0xfff1c9, emissiveIntensity: 0.5, roughness: 0.4
     }), { cast: false, receive: false });
 
     var sign = paint(function (ctx, w, h) {
@@ -337,7 +334,7 @@
       ctx.fillText("пункт выдачи заказов", w / 2, h / 2 + 58);
     }, 1024, 256);
     var signMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.05, 0.52), mat(0xffffff, { map: sign, roughness: 0.6 }));
-    signMesh.position.set(0.4, 2.08, 1.92);
+    signMesh.position.set(counterX, 2.08, counterZ + 0.14);
     scene.add(signMesh);
 
     var storeSign = paint(function (ctx, w, h) {
@@ -353,16 +350,18 @@
       new THREE.PlaneGeometry(0.95, 0.3),
       mat(0xffffff, { map: storeSign, roughness: 0.55 })
     );
-    storePlate.position.set(-2.15, 1.85, 1.5);
+    storePlate.position.set(-2.4, 1.85, DIV_Z + half + 0.02);
     storePlate.rotation.y = Math.PI;
     scene.add(storePlate);
 
-    addBox(-0.86, 1.15, 5.6, 0.1, 2.3, 0.16, woodDark, { cast: false });
-    addBox(0.86, 1.15, 5.6, 0.1, 2.3, 0.16, woodDark, { cast: false });
-    addBox(0, 2.32, 5.6, 1.85, 0.14, 0.16, woodDark, { cast: false });
+    // Customer door frame on the street wall
+    var doorZ = BUILD_MAX_Z;
+    addBox(-0.86, 1.15, doorZ, 0.1, 2.3, 0.16, woodDark, { cast: false });
+    addBox(0.86, 1.15, doorZ, 0.1, 2.3, 0.16, woodDark, { cast: false });
+    addBox(0, 2.32, doorZ, 1.85, 0.14, 0.16, woodDark, { cast: false });
 
     doorPivot = new THREE.Group();
-    doorPivot.position.set(-0.7, 0, 5.6);
+    doorPivot.position.set(-0.7, 0, doorZ);
     var door = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.15, 0.06), mat(0x6e543c, { roughness: 0.72 }));
     door.position.set(0.7, 1.1, 0);
     door.castShadow = true;
@@ -378,15 +377,15 @@
     doorPivot.add(glass);
     scene.add(doorPivot);
 
-    addBox(-2.55, 0.45, 4.55, 0.46, 0.9, 0.46, mat(0x8a5a32, { roughness: 0.85 }));
-    addBox(-2.55, 1.15, 4.55, 0.72, 0.55, 0.72, mat(0x3d8a52, { roughness: 0.75 }));
+    addBox(-2.8, 0.45, 4.8, 0.46, 0.9, 0.46, mat(0x8a5a32, { roughness: 0.85 }));
+    addBox(-2.8, 1.15, 4.8, 0.72, 0.55, 0.72, mat(0x3d8a52, { roughness: 0.75 }));
 
     buildCustomer();
   }
 
   function buildCustomer() {
     customerGroup = new THREE.Group();
-    customerGroup.position.set(0, 0, 6.5);
+    customerGroup.position.set(0, 0, 6.45);
     customerGroup.visible = false;
     scene.add(customerGroup);
     var skin = mat(0xe0b090, { roughness: 0.7 });
@@ -554,10 +553,10 @@
   }
 
   function buildShelves() {
-    addShelfUnit(-2.05, -6.35, "pz", 4, 3);
-    addShelfUnit(2.15, -6.35, "pz", 4, 3);
-    addShelfUnit(-6.05, -4.15, "px", 4, 3);
-    addShelfUnit(6.05, -3.7, "nx", 4, 3);
+    addShelfUnit(-2.2, -6.55, "pz", 4, 3);
+    addShelfUnit(2.2, -6.55, "pz", 4, 3);
+    addShelfUnit(-6.05, -4.0, "px", 4, 3);
+    addShelfUnit(6.05, -4.0, "nx", 4, 3);
   }
 
   var BANDS = ["#c4523a", "#2f6fad", "#2f7d4a", "#b8860b", "#6d4c93", "#b05a28", "#1f6f78", "#8c3d55"];
@@ -816,9 +815,9 @@
       phase: "enter",
       deadline: 0,
       x: 0.05,
-      z: 6.55,
-      spot: { x: spotX, z: 3.2 },
-      door: { x: 0.05, z: 6.55 }
+      z: 6.45,
+      spot: { x: spotX, z: 3.05 },
+      door: { x: 0.05, z: 6.45 }
     };
     var colors = [0x2f6fad, 0xb05a28, 0x2f7d4a, 0x6d4c93, 0xa33b32];
     setCustomerColor(colors[rand(colors.length)]);
@@ -891,7 +890,7 @@
       return;
     }
     customerGroup.position.set(customer.x, customer.phase === "wait" ? Math.sin(now * 0.003) * 0.012 : 0, customer.z);
-    var open = customer && customer.z > 5.2;
+    var open = customer && customer.z > 5.35;
     var angle = open ? 1.2 : 0;
     doorPivot.rotation.y += (angle - doorPivot.rotation.y) * Math.min(1, dt * 5);
   }
@@ -928,10 +927,10 @@
   }
 
   function inServiceSpot() {
-    if (player.z < 0.86 || player.z > 1.18) return false;
-    if (player.x < -1.15 || player.x > 2.05) return false;
+    if (player.z < 0.55 || player.z > 1.25) return false;
+    if (player.x < -1.2 || player.x > 2.0) return false;
     var d = Math.atan2(Math.sin(yaw - Math.PI), Math.cos(yaw - Math.PI));
-    return Math.abs(d) < 0.85 && pitch > -1.0 && pitch < 0.65;
+    return Math.abs(d) < 0.9 && pitch > -1.0 && pitch < 0.65;
   }
 
   function setHover(parcel) {
@@ -990,8 +989,8 @@
     hideCustomer();
     if (doorPivot) doorPivot.rotation.y = 0;
     shiftLeft = SHIFT_SEC;
-    player.x = 0.15;
-    player.z = 1.02;
+    player.x = 0.2;
+    player.z = 0.9;
     yaw = Math.PI;
     pitch = -0.06;
     mode = "play";
@@ -1190,20 +1189,20 @@
     } else if (mode === "pause") {
       applyLook();
       if (customer && customer.phase !== "wait") tickCustomer(0, now);
-      if (doorPivot && (!customer || customer.z <= 5.2)) {
+      if (doorPivot && (!customer || customer.z <= 5.35)) {
         doorPivot.rotation.y += (0 - doorPivot.rotation.y) * Math.min(1, dt * 5);
       }
     } else {
       menuT += dt;
-      camera.position.set(Math.sin(menuT * 0.22) * 0.22, 1.7, 4.72);
-      camera.lookAt(0.35, 1.2, 1.9);
+      camera.position.set(Math.sin(menuT * 0.22) * 0.22, 1.7, 4.85);
+      camera.lookAt(0.3, 1.2, 1.7);
       if (doorPivot) {
         var swing = (Math.sin(menuT * 0.7) > 0.55) ? 1.05 : 0;
         doorPivot.rotation.y += (swing - doorPivot.rotation.y) * Math.min(1, dt * 3);
       }
       if (!customer) {
         customerGroup.visible = true;
-        customerGroup.position.set(0.05, 0, 3.2);
+        customerGroup.position.set(0.05, 0, 3.05);
         customerGroup.rotation.y = 0;
       }
     }
@@ -1218,7 +1217,7 @@
   stock(13);
   if (!customer) {
     customerGroup.visible = true;
-    customerGroup.position.set(0.05, 0, 3.2);
+    customerGroup.position.set(0.05, 0, 3.05);
     customerSprite.visible = false;
   }
   requestAnimationFrame(tick);
