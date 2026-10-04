@@ -252,6 +252,7 @@
     ];
     var hallRects = [
       { minX: -6.45, maxX: 3.40, minZ: 0.40, maxZ: 1.52 },
+      { minX: -6.45, maxX: -3.22, minZ: 1.52, maxZ: 5.50 },
       { minX: -3.22, maxX: 3.22, minZ: 1.52, maxZ: 5.50 },
       { minX: -0.98, maxX: 0.98, minZ: 5.50, maxZ: 7.05 }
     ];
@@ -273,9 +274,9 @@
     }
 
     var shell = [
-      { minX: -3.42, maxX: -3.22, minZ: 1.5, maxZ: 5.65 },
       { minX: 3.22, maxX: 3.42, minZ: 1.5, maxZ: 5.65 },
-      { minX: -3.42, maxX: -0.72, minZ: 5.5, maxZ: 5.7 },
+      { minX: -6.7, maxX: -6.5, minZ: 1.52, maxZ: 5.7 },
+      { minX: -6.7, maxX: -0.72, minZ: 5.5, maxZ: 5.7 },
       { minX: 0.72, maxX: 3.42, minZ: 5.5, maxZ: 5.7 },
       { minX: -1.18, maxX: -0.98, minZ: 5.65, maxZ: 7.2 },
       { minX: 0.98, maxX: 1.18, minZ: 5.65, maxZ: 7.2 },
